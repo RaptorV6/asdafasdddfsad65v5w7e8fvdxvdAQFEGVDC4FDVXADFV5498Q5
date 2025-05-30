@@ -38,4 +38,29 @@
 .empty{ background-color: #566573; color:white; }
 .darkred{ background-color: #590505; color:white; }
 </style>
+
+/* Oprava responzivity gridu */
+.datagrid {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.datagrid table {
+    width: 100%;
+    min-width: 1200px; /* Minimální šířka pro horizontální scroll */
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1400px) {
+    .datagrid table {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .datagrid table {
+        font-size: 11px;
+    }
+}
+</style>
 {/block}

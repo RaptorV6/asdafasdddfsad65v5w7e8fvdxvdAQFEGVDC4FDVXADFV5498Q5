@@ -54,6 +54,7 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         return $grid;
     }
 
+
     public function createComponentDGDataGrid(string $name): Multiplier{
         return new Multiplier(function ($ID_LEKY) {
 

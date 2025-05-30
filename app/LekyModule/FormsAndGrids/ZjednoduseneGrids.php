@@ -18,6 +18,9 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         $grid->setPrimaryKey("ID_LEKY");
         $grid->setStrictSessionFilterValues(false);
         $grid->setColumnsHideable();
+        
+        // Nastavení defaultního řazení jako v původním gridu
+        $grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
 
         // Pouze požadované sloupce
         
@@ -33,14 +36,17 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
 
         $grid->addColumnText('POZNAMKA', 'Poznámka pro všechny ZP')
              ->setSortable()
+             ->setDefaultHide() // Skrýt ve výchozím stavu
              ->setFilterText();
 
         $grid->addColumnText('UCINNA_LATKA', 'Učinná látka')
              ->setSortable()
+             ->setDefaultHide() // Skrýt ve výchozím stavu
              ->setFilterText();
 
         $grid->addColumnText('BIOSIMOLAR', 'Biosimilar')
              ->setSortable()
+             ->setDefaultHide() // Skrýt ve výchozím stavu
              ->setFilterText();
 
         $grid->addColumnText('ATC', 'ATC')
@@ -60,7 +66,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                      $el->class($item["poj" . $value . "_BARVA"]);
                      if ($item[$value . "_STAV"] == 'Nasmlouváno') {
                          $item[$value . "_NASMLOUVANO_OD"] = $item[$value . "_NASMLOUVANO_OD"] ?? "Nezadáno";
-                         $item[$value . "_STAV"] = $item[$value . "_STAV"] . ' ' . $item[$value . "_NASMLOUVANO_OD"] ?? "Nezadáno";
+                         $item[$value . "_STAV"] = $item[$value . "_STAV"] . ' ' . $item[$value . "_NASMLOUVANO_OD"];
                      } else {
                          $item[$value . "_STAV"] = $item[$value . "_STAV"] ?? "Nezadáno";
                      }
@@ -141,7 +147,6 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
 
         return $grid;
     }
-
     public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
         $grid->setPrimaryKey("ID");
         $grid->setTranslator($this->getCsTranslator());
