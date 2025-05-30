@@ -31,7 +31,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
              ->setFilterText()
              ->setSplitWordsSearch(true);
 
-        $grid->addColumnText('POZNAMKA', 'Poznámka')
+        $grid->addColumnText('POZNAMKA', 'Poznámka pro všechny ZP')
              ->setSortable()
              ->setFilterText();
 
@@ -74,11 +74,11 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  ->setFilterText();
         }
 
-        // Přidání DG detailu (rozkliknutí) - tohle jsem omylem smazal
+        // Přidání DG detailu (rozkliknutí) - změna textu
         $grid->setItemsDetail(true, "ID_LEKY")
              ->setClass("btn btn-primary btn-sm ajax")
-             ->setTitle("Diagnostické skupiny")
-             ->setText("DG")
+             ->setTitle("Detail informace o léku")
+             ->setText("Detail (Info)")
              ->setIcon("arrow-down")
              ->setTemplateParameters(["ID_LEKY"=>"ID_LEKY"])
              ->setType("template")
@@ -139,133 +139,116 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  ->setIcon("pencil");
         }
 
-    return $grid;
-}
+        return $grid;
+    }
 
-public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
-    $grid->setPrimaryKey("ID");
-    $grid->setTranslator($this->getCsTranslator());
-    $grid->setColumnsHideable();
+    public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
+        $grid->setPrimaryKey("ID");
+        $grid->setTranslator($this->getCsTranslator());
+        $grid->setColumnsHideable();
 
-    $grid->addColumnText('ID', '#')
-         ->setSortable()
-         ->setFilterText();
+        $grid->addColumnText('NAZ', 'Lék')
+             ->setSortable()
+             ->setFilterText();
 
-    $grid->addColumnText('ID_LEKY', 'Lék')
-         ->setSortable()
-         ->setFilterText();
+        $grid->addColumnText('POJISTOVNA', 'Pojišťovna')
+             ->setSortable()
+             ->setReplacement(['0'=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY)
+             ->setFilterText();
 
-    $grid->addColumnText('ORGANIZACE', 'Organizace')
-         ->setSortable()
-         ->setFilterMultiSelect(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
+        $grid->addColumnText('DG_NAZEV', 'Název DG')
+             ->setSortable()
+             ->setFilterText();
 
-    $grid->addColumnText('POJISTOVNA', 'Pojišťovna')
-         ->setSortable()
-         ->setReplacement(['0'=>'Všechny'])
-         ->setFilterText();
+        $grid->addColumnText('VILP', 'VILP')
+             ->setSortable()
+             ->setReplacement(\App\LekyModule\Presenters\ZjednodusenePresenter::TRUEORFALSE)
+             ->setFilterText();
 
-    $grid->addColumnText('DG_NAZEV', 'Název DG')
-         ->setSortable()
-         ->setFilterText();
+        $grid->addColumnDateTime('DG_PLATNOST_OD', 'Platnost od')
+             ->setFitContent()
+             ->setFormat("d.m.Y")
+             ->setSortable()
+             ->setAlign('left')
+             ->setFilterDate()
+             ->setAttribute("data-date-language", "cs");
 
-    $grid->addColumnText('VILP', 'VILP')
-         ->setSortable()
-         ->setReplacement(\App\LekyModule\Presenters\ZjednodusenePresenter::TRUEORFALSE)
-         ->setFilterText();
+        $grid->addColumnDateTime('DG_PLATNOST_DO', 'Platnost do')
+             ->setFitContent()
+             ->setFormat("d.m.Y")
+             ->setSortable()
+             ->setAlign('left')
+             ->setFilterDate()
+             ->setAttribute("data-date-language", "cs");
 
-    $grid->addColumnDateTime('DG_PLATNOST_OD', 'Platnost od')
-         ->setFitContent()
-         ->setFormat("d.m.Y")
-         ->setSortable()
-         ->setAlign('left')
-         ->setFilterDate()
-         ->setAttribute("data-date-language", "cs");
+        $grid->addInlineAdd()
+             ->setPositionTop()
+             ->onControlAdd[] = function (Container $container) use($ID_LEKY){
+                 $container->addText("ID_LEKY", "ID Léku")
+                          ->setDefaultValue($ID_LEKY)
+                          ->setHtmlAttribute('readonly');
 
-    $grid->addColumnDateTime('DG_PLATNOST_DO', 'Platnost do')
-         ->setFitContent()
-         ->setFormat("d.m.Y")
-         ->setSortable()
-         ->setAlign('left')
-         ->setFilterDate()
-         ->setAttribute("data-date-language", "cs");
-
-    $grid->addInlineAdd()
-         ->setPositionTop()  // Oprava: používám setPositionTop místo setPositionBottom
-         ->onControlAdd[] = function (Container $container) use($ID_LEKY){
-             $container->addText("ID_LEKY", "Lék")
-                      ->setDefaultValue($ID_LEKY)
-                      ->setHtmlAttribute('readonly');
-                         
-             $container->addSelect('ORGANIZACE','ORGANIZACE')
-                      ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
-
-             $container->addSelect('POJISTOVNA','Pojišťovna')
-                      ->setItems([0=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
-             
-             $container->addText("DG_NAZEV", "DG Název")
-                      ->setHtmlAttribute('data-autocomplete-dg')
-                      ->setNullable();
-         
-             $container->addCheckbox('VILP', 'VILP')
-                      ->setHtmlAttribute('class', 'checkbox_style');
-
-             $container->addText('DG_PLATNOST_OD','Platnost od')
-                      ->setHtmlType('date')
-                      ->setDefaultValue(date("Y-m-d"))
-                      ->setNullable();
-
-             $container->addText('DG_PLATNOST_DO','Platnost do')
-                      ->setHtmlType('date')
-                      ->setDefaultValue(date("Y-m-d"))
-                      ->setNullable();
-         };
-
-    $grid->addInlineEdit()
-         ->onControlAdd[] = function(Container $container): void {
-             $container->addText("ID_LEKY", "Lék")
-                      ->setHtmlAttribute('readonly');
+                 $container->addSelect('POJISTOVNA','Pojišťovna')
+                          ->setItems([0=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
                  
-             $container->addSelect('ORGANIZACE','ORGANIZACE')
-                      ->setHtmlAttribute('readonly')
-                      ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
-
-             $container->addSelect('POJISTOVNA', 'Pojišťovna')
-                      ->setHtmlAttribute('readonly')
-                      ->setItems([0=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
+                 $container->addText("DG_NAZEV", "DG Název")
+                          ->setHtmlAttribute('data-autocomplete-dg')
+                          ->setNullable();
              
-             $container->addText("DG_NAZEV", "DG Název")
-                      ->setHtmlAttribute('readonly')
-                      ->setNullable();
-         
-             $container->addCheckbox('VILP', 'VILP')
-                      ->setHtmlAttribute('class', 'checkbox_style');
+                 $container->addCheckbox('VILP', 'VILP')
+                          ->setHtmlAttribute('class', 'checkbox_style');
 
-             $container->addText('DG_PLATNOST_OD','Platnost od')
-                      ->setHtmlType('date')
-                      ->setNullable();
+                 $container->addText('DG_PLATNOST_OD','Platnost od')
+                          ->setHtmlType('date')
+                          ->setDefaultValue(date("Y-m-d"))
+                          ->setNullable();
 
-             $container->addText('DG_PLATNOST_DO','Platnost do')
-                      ->setHtmlType('date')
-                      ->setNullable();
-         };
+                 $container->addText('DG_PLATNOST_DO','Platnost do')
+                          ->setHtmlType('date')
+                          ->setDefaultValue(date("Y-m-d"))
+                          ->setNullable();
+             };
 
-    $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
-        $ID_LEKY = $item['ID_LEKY'];
-        $ORGANIZACE = $item['ORGANIZACE'];
-        $POJISTOVNA = $item['POJISTOVNA'];
-        $PLATNOST_OD = $item['DG_PLATNOST_OD'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_OD'])->format('Y-m-d') : NULL;
-        $PLATNOST_DO = $item['DG_PLATNOST_DO'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_DO'])->format('Y-m-d') : NULL;
-        $container->setDefaults([
-            'ID_LEKY' => $ID_LEKY,
-            'ORGANIZACE' => $ORGANIZACE,
-            'POJISTOVNA' => $POJISTOVNA,
-            'VILP' => $item['VILP'],
-            'DG_NAZEV' => $item['DG_NAZEV'],
-            'DG_PLATNOST_OD' => $PLATNOST_OD,
-            'DG_PLATNOST_DO' => $PLATNOST_DO,
-        ]);
-    };
+        $grid->addInlineEdit()
+             ->onControlAdd[] = function(Container $container): void {
+                 $container->addText("ID_LEKY", "ID Léku")
+                          ->setHtmlAttribute('readonly');
 
-    return $grid;
-}
+                 $container->addSelect('POJISTOVNA', 'Pojišťovna')
+                          ->setHtmlAttribute('readonly')
+                          ->setItems([0=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
+                 
+                 $container->addText("DG_NAZEV", "DG Název")
+                          ->setHtmlAttribute('readonly')
+                          ->setNullable();
+             
+                 $container->addCheckbox('VILP', 'VILP')
+                          ->setHtmlAttribute('class', 'checkbox_style');
+
+                 $container->addText('DG_PLATNOST_OD','Platnost od')
+                          ->setHtmlType('date')
+                          ->setNullable();
+
+                 $container->addText('DG_PLATNOST_DO','Platnost do')
+                          ->setHtmlType('date')
+                          ->setNullable();
+             };
+
+        $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
+            $ID_LEKY = $item['ID_LEKY'];
+            $POJISTOVNA = $item['POJISTOVNA'];
+            $PLATNOST_OD = $item['DG_PLATNOST_OD'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_OD'])->format('Y-m-d') : NULL;
+            $PLATNOST_DO = $item['DG_PLATNOST_DO'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_DO'])->format('Y-m-d') : NULL;
+            $container->setDefaults([
+                'ID_LEKY' => $ID_LEKY,
+                'POJISTOVNA' => $POJISTOVNA,
+                'VILP' => $item['VILP'],
+                'DG_NAZEV' => $item['DG_NAZEV'],
+                'DG_PLATNOST_OD' => $PLATNOST_OD,
+                'DG_PLATNOST_DO' => $PLATNOST_DO,
+            ]);
+        };
+
+        return $grid;
+    }
 }

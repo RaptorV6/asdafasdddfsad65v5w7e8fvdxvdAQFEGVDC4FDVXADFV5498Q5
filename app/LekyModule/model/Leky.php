@@ -213,4 +213,11 @@ class Leky extends \App\Model\AModel {
 
 		return $select->fetchAll();
 	}
+
+public function getDataSource_DG_WithName($id_leku) {
+    return $this->db->select('ROW_NUMBER() OVER (ORDER BY dg1.ID_LEKY + 1) AS ID, dg1.[ID_LEKY], L.NAZ, dg1.[ORGANIZACE], dg1.[POJISTOVNA], dg1.[DG_NAZEV], dg1.[VILP], CONVERT(nvarchar(20), dg1.DG_PLATNOST_OD, 104) as DG_PLATNOST_OD, CONVERT(nvarchar(20), dg1.DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
+                    ->from(self::POJISTOVNY_DG)->as('dg1')
+                    ->leftJoin(self::LEKY)->as('L')->on('dg1.ID_LEKY = L.ID_LEKY AND L.' . self::WHERE_SADA)
+                    ->where('dg1.ID_LEKY = %s and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $id_leku)->fetchAll();
+}
 }

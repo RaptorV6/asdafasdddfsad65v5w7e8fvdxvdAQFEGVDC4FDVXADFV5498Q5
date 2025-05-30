@@ -28,7 +28,7 @@ class ZjednoduseneFormFactory {
              ->setRequired('Musí být vyplněný "%label"')
              ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 70);
 
-        $form->addTextArea('POZNAMKA', 'Poznámka')
+        $form->addTextArea('POZNAMKA', 'Poznámka pro všechny ZP')
              ->setNullable();
 
         $form->addTextArea('UCINNA_LATKA', 'Učinná látka')
