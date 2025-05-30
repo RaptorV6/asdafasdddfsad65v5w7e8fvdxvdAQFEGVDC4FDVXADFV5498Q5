@@ -50,7 +50,7 @@ class ZjednoduseneFormFactory {
                  ->endCondition();
 
             $form->addText($pojistovna . '_NASMLOUVANO_OD', $nazev . ' - Nasmlouváno od')
-                 ->setType('date')
+                 ->setHtmlAttribute('type', 'date')
                  ->setOption('id', 'nasmlouvano_' . $pojistovna)
                  ->setNullable();
         }
