@@ -193,4 +193,24 @@ class Leky extends \App\Model\AModel {
 						->fetchPairs();
 	}
 
+	public function getDataSourceWithGlobalSearch($searchTerm, $organizace = null, $history = null) {
+		$select = $this->db->select("*")
+						->from(self::LEKY_VIEW);
+
+		if ($organizace) {
+			$select->where("ORGANIZACE = %s", $organizace);
+		}
+
+		if (!$history) {
+			$select->where("AKORD = 0");
+		}
+
+		// Globální vyhledávání v požadovaných polích
+		if ($searchTerm) {
+			$select->where("(NAZ LIKE %~like~ OR ATC LIKE %~like~ OR UCINNA_LATKA LIKE %~like~ OR BIOSIMOLAR LIKE %~like~)",
+						$searchTerm, $searchTerm, $searchTerm, $searchTerm);
+		}
+
+		return $select->fetchAll();
+	}
 }

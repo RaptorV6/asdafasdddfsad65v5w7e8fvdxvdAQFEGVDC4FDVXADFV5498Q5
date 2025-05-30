@@ -1,0 +1,82 @@
+{*{ app/LekyModule/templates/Zjednodusene/edit.latte *}
+{layout '../@layout.latte'}
+
+{block content}
+    <div id="content">
+      {if $prava == '9' || $prava == '2'}  
+        {form zjednoduseneForm}
+        <div n:if="$form->hasErrors()" n:foreach="$form->errors as $error" n:class="alert, 'alert-danger'"><span>{$error}</span></div>   
+        <fieldset>
+                <article>
+                    <div class="alert alert-warning">
+                        <strong>Zjednodušené zadávání léku</strong><br>
+                        Zadávejte pouze nejdůležitější informace.
+                    </div>
+                    
+                    <table class="lekovnice">
+                      <tr>
+                        <th colspan="2">Základní informace</th>
+                      </tr>
+                      <tr>
+                        <td>{label ORGANIZACE /}</td>
+                        <td>{input ORGANIZACE}</td>
+                      </tr>                                          
+                      <tr>
+                        <td>{label NAZ /}</td>
+                        <td>{input NAZ}</td>
+                      </tr>                                           
+                      <tr>
+                        <td>{label POZNAMKA /}</td>
+                        <td>{input POZNAMKA}</td>
+                      </tr>
+                      <tr>
+                        <td>{label UCINNA_LATKA /}</td>
+                        <td>{input UCINNA_LATKA}</td>
+                      </tr>
+                      <tr>
+                        <td>{label BIOSIMOLAR /}</td>
+                        <td>{input BIOSIMOLAR}</td>
+                      </tr>
+                      <tr>
+                        <td>{label ATC /}</td>
+                        <td>{input ATC}</td>
+                      </tr>
+                    </table>
+
+                    <table class="lekovnice">
+                      <tr>
+                        <th colspan="2">Stavy pojišťoven</th>
+                      </tr>
+                      {foreach ['111', '201', '205', '207', '209', '211', '213'] as $poj}
+                      <tr>
+                        <td>{label {$poj}_STAV /}</td>
+                        <td>{input {$poj}_STAV}</td>
+                      </tr>
+                      <tr id="nasmlouvano_{$poj}">
+                        <td>{label {$poj}_NASMLOUVANO_OD /}</td>
+                        <td>{input {$poj}_NASMLOUVANO_OD}</td>
+                      </tr>
+                      {/foreach}
+                    </table>
+
+                    <table class="lekovnice" style="position: sticky; bottom: 0; left: 0; width: 100%; background: #225e9d;">
+                        <td style="width: 50%;"><a n:href="Zjednodusene:default" class="btn btn-danger btn-block">Zpět</a></td> 
+                        <td>{input send}</td>
+                    </table>
+                </article>
+        </fieldset>
+        {/form}
+      {else}
+         <p n:class="alert, 'alert-danger'">Nemáte dostatečná práva!!</p>
+      {/if}    
+    </div>
+{/block}
+
+{block scripts}
+{include #parent}
+<script type="text/javascript" n:syntax='off'>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+})
+</script>
+{/block}
