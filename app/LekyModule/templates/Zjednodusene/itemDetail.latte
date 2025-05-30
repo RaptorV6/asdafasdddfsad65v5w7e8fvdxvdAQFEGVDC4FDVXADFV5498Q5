@@ -1,0 +1,6 @@
+{* app/LekyModule/templates/Zjednodusene/itemDetail.latte *}
+{block detail}
+    <div id="content">
+            {$presenter->getComponent('dGDataGrid-'.$item->ID_LEKY)->render()} 
+    </div>
+{/block}

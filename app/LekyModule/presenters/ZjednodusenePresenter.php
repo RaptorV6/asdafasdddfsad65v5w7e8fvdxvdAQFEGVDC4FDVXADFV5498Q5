@@ -4,6 +4,7 @@
 namespace App\LekyModule\Presenters;
 
 use Nette\Application\UI\Form;
+use Nette\Application\UI\Multiplier;
 use Ublaboo\DataGrid\DataGrid;
 use App\LekyModule\Model\Leky;
 use Ublaboo\DataGrid\AkesoGrid;
@@ -22,10 +23,11 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
     /** @var \App\LogyModule\Model\Logy @inject */
     public $LogyModel;
 
-    const ORGANIZACE = ["NH" => "Hořovice", "RNB" => "Beroun", "MUS" => "Pardubice", "DCNH" => "Diagnostické centrum nemocnice Hořovice"],
-          POJISTOVNY = array('111' => '111', '201' => '201', '205' => '205', '207' => '207', '209' => '209', '211' => '211', '213' => '213'),
-          STAV = array(
-              '' => '-- Vyberte stav --',
+const ORGANIZACE = ["NH" => "Hořovice", "RNB" => "Beroun", "MUS" => "Pardubice", "DCNH" => "Diagnostické centrum nemocnice Hořovice"],
+      POJISTOVNY = array('111' => '111', '201' => '201', '205' => '205', '207' => '207', '209' => '209', '211' => '211', '213' => '213'),
+      TRUEORFALSE = [ "" => "Ne", "0" => "Ne", "1" => "Ano"],  // <-- Přidat tuto konstantu
+      STAV = array(
+          '' => '-- Vyberte stav --',
               'Nasmlouváno' => 'Ano/Nasmlouváno',
               'Čeká se' => 'Ne/Čeká se',
               'Nezadáno' => 'Ne/Nezadáno',
@@ -62,6 +64,27 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         
         $form->onSuccess[] = [$this, "zjednoduseneFormSucceeded"];
         return $form;
+    }
+
+    public function createComponentDGDataGrid(string $name): Multiplier{
+        return new Multiplier(function ($ID_LEKY) {
+
+            $grid = new DataGrid(null, $ID_LEKY);
+            $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+            $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
+            $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
+                $this->BaseModel->set_pojistovny_dg($values);
+                $this->flashMessage("Vkládání do databáze proběhlo v pořádku", 'success');
+                $this->redirect('this');
+            };
+            $grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
+                $this->BaseModel->set_pojistovny_dg_edit($values);
+                $this->flashMessage("Editace proběhla v pořádku", 'success');
+                $this->redirect('this');
+            };
+            
+            return $grid;
+        });
     }
 
     public function renderDefault() {
