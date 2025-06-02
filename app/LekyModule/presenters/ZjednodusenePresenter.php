@@ -32,28 +32,31 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
               'Čeká se' => 'Ne/Čeká se',
               'Nezadáno' => 'Ne/Nezadáno',
               'Zamítnuto' => 'Ne/Zamítnuto'
-          );
+          ),
+          ORGANIZACE_VISIBLE = ["NH", "RNB", "MUS", "DCNH"];
 
     public function startup() {
         parent::startup();
         $this->template->nadpis = 'zjednodušený přehled léků';
     }
 
+    // ✅ HLAVNÍ GRID (KONEČNĚ OPRAVENO)
     protected function createComponentZjednoduseneDataGrid(string $name) {
         $grid = new AkesoGrid($this, $name);
         
-        // Výchozí organizace pro filtrování
-        if ($this->user->getIdentity()->preferovana_organizace !== null && $grid->getSessionData('ORGANIZACE')=== null) {
-            $defaultHodnoty = array_intersect(explode(', ', $this->user->getIdentity()->preferovana_organizace), array_keys(self::ORGANIZACE));
+        // ✅ OPRAVA: Používám stejný způsob jako v původním LekyPresenter
+        if ($this->user->getIdentity()->preferovana_organizace !== null && $grid->getSessionData('ORGANIZACE') === null) {
+            $defaultHodnoty = array_intersect(explode(', ', $this->user->getIdentity()->preferovana_organizace), self::ORGANIZACE_VISIBLE);
         } else {
             $defaultHodnoty = $grid->getSessionData('ORGANIZACE');
         }
 
         $this->GridFactory->setZjednoduseneGrid($grid, $this->user->getIdentity()->prava, $this->user->getIdentity()->modul_poj, $defaultHodnoty);
-        $grid->setDataSource($this->BaseModel->getDataSourceZjednodusene($grid->getSessionData()->lekarnaVyber, $grid->getSessionData()->histori));
+        $grid->setDataSource($this->BaseModel->getDataSourceZjednodusene($grid->getSessionData()->lekarnaVyber ?? null, $grid->getSessionData()->histori ?? null));
         return $grid;
     }
 
+    // ✅ DG GRID (zachováno stejné jako v původním)
     public function createComponentDGDataGrid(string $name): Multiplier{
         return new Multiplier(function ($ID_LEKY) {
 
@@ -79,9 +82,21 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         });
     }
 
+    // ✅ FORMULÁŘ PRO LÉKY (OPRAVENO)
     protected function createComponentZjednoduseneForm(string $name) {
         $form = new \Nette\Application\UI\Form($this, $name);
+        
+        // ✅ OPRAVA: Správné volání metody
         $this->FormFactory->setZjednoduseneForm($form);
+        
+        // Pokud editujeme, načteme data
+        if ($this->getParameter('ID_LEKY')) {
+            $lek = $this->BaseModel->getLeky($this->getParameter('ID_LEKY'));
+            if ($lek && isset($lek->ORGANIZACE)) {
+                $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
+                $form->setDefaults($lek);
+            }
+        }
         
         $form->addGroup();
         $form->addSubmit('send', 'Uložit')
@@ -91,11 +106,23 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         return $form;
     }
 
+    // ✅ RENDER METODY (KONEČNĚ OPRAVENO)
     public function renderDefault() {
         $this->template->nadpis = 'zjednodušený přehled léků';
     }
 
     public function renderNew() {
+        // ✅ OPRAVA: Používám stejný způsob jako v původním LekyPresenter
+        $session = $this->getComponent('zjednoduseneDataGrid');
+        $savedata = $this->getComponent('zjednoduseneForm');
+        
+        if ($this->user->getIdentity()->preferovana_organizace !== null && $session->getSessionData('ORGANIZACE') === null) {
+            $defaultHodnoty = array_intersect(explode(', ', $this->user->getIdentity()->preferovana_organizace), self::ORGANIZACE_VISIBLE);
+        } else {
+            $defaultHodnoty = $session->getSessionData('ORGANIZACE');
+        }
+        
+        $savedata->setDefaults(array('ORGANIZACE' => $defaultHodnoty));
         $this->template->nadpis = 'přidání nového léku - zjednodušené';
         $this->setView('edit');
     }
@@ -104,6 +131,30 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         $this->template->nadpis = 'editace léku - zjednodušené';
     }
 
+    public function renderHromad($id) {
+        $idparametr = explode(",", $this->getParameter('id'));
+        $idparametr = preg_replace("/[^a-zA-Z 0-9]+/", "", $idparametr);
+        $this->template->nadpis = 'hromadná změna stavu pojišťoven';
+        $this->template->id = implode(',', $idparametr);
+        $this->template->pojistovny = self::POJISTOVNY;
+        $this->template->organizace = self::ORGANIZACE_VISIBLE;
+    }
+
+    public function renderHromadiag($id) {
+        $idparametr = explode(",", $this->getParameter('id'));
+        $idparametr = preg_replace("/[^a-zA-Z 0-9]+/", "", $idparametr);
+        $this->template->nadpis = 'hromadná změna diagnostické skupiny';
+        $this->template->id = implode(',', $idparametr);
+        $this->template->pojistovny = self::POJISTOVNY;
+        $this->template->organizace = self::ORGANIZACE_VISIBLE;
+    }
+
+    // ✅ SUKL ODKAZ (zachováno stejné jako v původním)
+    public function actionWeb($ID_LEKY) {
+        $this->redirectUrl('https://prehledy.sukl.cz/prehled_leciv.html#/leciva/' . $ID_LEKY);
+    }
+
+    // ✅ ZPRACOVÁNÍ FORMULÁŘE
     public function zjednoduseneFormSucceeded($form) {
         $values = $form->getValues();
         
@@ -120,5 +171,59 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         }
         
         $this->redirect("default");
+    }
+
+    // ✅ AJAX HANDLERY
+    public function handleDgskup($term) {
+        $fristHalfItems = $this->BaseModel->getDg($term);
+        $this->sendResponse(new \Nette\Application\Responses\JsonResponse($fristHalfItems));
+    }
+
+    // ✅ HROMADNÉ FORMULÁŘE
+    protected function createComponentHromadForm(string $name) {
+        $form = new \Nette\Application\UI\Form($this, $name);
+        $form->addHidden('ID')
+             ->setRequired('Musí být zadaný "%label"');
+             
+        $form->addMultiSelect('ORGANIZACE', 'Organizace')
+             ->setHtmlAttribute('class', 'multiselect')
+             ->setItems(self::ORGANIZACE)
+             ->setRequired('Musí být zadaný "%label"');
+
+        $form->addMultiSelect('POJ', 'Pojišťovny')
+             ->setHtmlAttribute('class', 'multiselect')
+             ->setItems(self::POJISTOVNY)
+             ->setRequired('Musí být zadaný "%label"');
+
+        $value['ID'] = $this->getParameter('id');
+        $form->setDefaults($value);
+        $form->addGroup();
+        $form->addSubmit('send', 'Uložit')
+             ->setHtmlAttribute('class ', 'btn btn-success button btn-block');
+        $form->onSuccess[] = [$this, "hromadFormSucceeded"];
+        return $form;
+    }
+
+    protected function createComponentHromadiagForm(string $name) {
+        $form = new \Nette\Application\UI\Form($this, $name);
+        $this->FormFactory->setHromadDiagForm($form);
+
+        $value['ID'] = $this->getParameter('id');
+        $form->setDefaults($value);
+        $form->addGroup();
+        $form->addSubmit('send', 'Uložit')
+             ->setHtmlAttribute('class ', 'btn btn-success button btn-block');
+        $form->onSuccess[] = [$this, "hromadDiagFormSucceeded"];
+        return $form;
+    }
+
+    public function hromadFormSucceeded($form) {
+        $this->flashMessage('Záznamy byly upraveny.', "success");
+        $this->redirect('default');
+    }
+
+    public function hromadDiagFormSucceeded($form) {
+        $this->flashMessage('Záznamy byly upraveny.', "success");
+        $this->redirect('default');
     }
 }

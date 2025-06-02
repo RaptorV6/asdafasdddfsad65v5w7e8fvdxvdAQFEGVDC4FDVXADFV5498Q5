@@ -42,6 +42,15 @@ class LekyZjednoduseny extends \App\Model\AModel {
         return array_values($uniqueLeky);
     }
 
+    // Přidejte do app/LekyModule/model/LekyZjednoduseny.php
+
+public function getDg($values) {
+    return $this->db->select('KOD_SKUP')
+                    ->from(\App\CiselnikyModule\Presenters\DgPresenter::DG)
+                    ->where('KOD_SKUP like %s', $values . '%')
+                    ->fetchPairs('KOD_SKUP', 'KOD_SKUP');
+}
+
     /**
      * ✅ GLOBÁLNÍ vyhledávání - také vrací pole
      */

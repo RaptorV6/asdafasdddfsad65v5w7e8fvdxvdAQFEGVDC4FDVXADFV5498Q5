@@ -103,52 +103,5 @@ color:white;
 background-color: #590505;
 color:white;	
 }
-
-/* Oprava responzivity gridu */
-.datagrid {
-   width: 100%;
-   overflow-x: auto;
-}
-
-.datagrid table {
-   width: 100%;
-   min-width: 1200px;
-}
-
-/* Responsive breakpoints */
-@media (max-width: 1400px) {
-   .datagrid table {
-       font-size: 12px;
-   }
-}
-
-@media (max-width: 1200px) {
-   .datagrid table {
-       font-size: 11px;
-   }
-}
-
-/* Zajištění stejného vzhledu jako původní grid */
-.datagrid .table {
-   margin-bottom: 0;
-}
-
-.datagrid .table th,
-.datagrid .table td {
-   padding: 0.5rem;
-   vertical-align: middle;
-}
-
-.datagrid .table-striped tbody tr:nth-of-type(odd) {
-   background-color: #E8F0FF;
-}
-
-.datagrid .table-striped tbody tr:nth-of-type(even) {
-   background-color: #FFFFFF;
-}
-
-.datagrid .table-hover tbody tr:hover {
-   background-color: #ddd;
-}
 </style>
 {/block}

@@ -74,6 +74,12 @@
 
 {block scripts}
 {include #parent}
+<script type="text/javascript">
+	$($("[data-autocomplete-dg]")).autocomplete({
+		source: {link Dgskup!}, 
+		minLength: 1
+	});
+</script>
 <script type="text/javascript" n:syntax='off'>
 $(function () {
   $('[data-toggle="tooltip"]').tooltip()

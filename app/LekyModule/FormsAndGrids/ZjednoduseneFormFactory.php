@@ -19,6 +19,7 @@ class ZjednoduseneFormFactory {
         
         $form->addHidden('ID', 'id');
 
+        // ✅ POUZE POŽADOVANÁ POLE (zjednodušeno)
         $form->addMultiSelect('ORGANIZACE', 'Organizace')
              ->setHtmlAttribute('class', 'multiselect')
              ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
@@ -28,7 +29,7 @@ class ZjednoduseneFormFactory {
              ->setRequired('Musí být vyplněný "%label"')
              ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 70);
 
-        $form->addTextArea('POZNAMKA', 'Poznámka pro všechny ZP')
+        $form->addTextArea('POZNAMKA', 'Poznámka')
              ->setNullable();
 
         $form->addTextArea('UCINNA_LATKA', 'Učinná látka')
@@ -41,7 +42,7 @@ class ZjednoduseneFormFactory {
              ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
              ->setNullable();
 
-        // Zjednodušené nastavení stavů pojišťoven
+        // ✅ ZJEDNODUŠENÉ NASTAVENÍ STAVŮ POJIŠŤOVEN (pouze stavy)
         foreach (\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY as $pojistovna => $nazev) {
             $form->addSelect($pojistovna . '_STAV', $nazev . ' - Stav')
                  ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::STAV)
@@ -54,5 +55,37 @@ class ZjednoduseneFormFactory {
                  ->setOption('id', 'nasmlouvano_' . $pojistovna)
                  ->setNullable();
         }
+    }
+
+    // ✅ OPRAVA: Správný typ pro Form parametr
+    public function setHromadDiagForm(\Nette\Application\UI\Form $form) {
+        $form->addHidden('ID')
+             ->setRequired('Musí být zadaný "%label"');
+
+        $form->addMultiSelect('ORGANIZACE', 'Organizace')
+             ->setHtmlAttribute('class', 'multiselect')
+             ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
+             ->setRequired('Musí být zadaný "%label"');
+
+        $form->addMultiSelect('POJ', 'Pojišťovny')
+             ->setHtmlAttribute('class', 'multiselect')
+             ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY)
+             ->setRequired('Musí být zadaný "%label"');
+
+        // Zjednodušená DG část
+        $form->addText('DG_NAZEV', 'DG Název')
+             ->setHtmlAttribute('data-autocomplete-dg')
+             ->setNullable();
+
+        $form->addCheckbox('VILP', 'VILP')
+             ->setHtmlAttribute('class', 'checkbox_style');
+
+        $form->addText('DG_PLATNOST_OD', 'Platnost od')
+             ->setHtmlType('date')
+             ->setNullable();
+
+        $form->addText('DG_PLATNOST_DO', 'Platnost do')
+             ->setHtmlType('date')
+             ->setNullable();
     }
 }

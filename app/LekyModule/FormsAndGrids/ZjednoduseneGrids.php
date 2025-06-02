@@ -22,8 +22,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         // Nastavení defaultního řazení jako v původním gridu
         $grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
 
-    
-        
+        // ✅ ZJEDNODUŠENÉ SLOUPCE (pouze požadované)
         $grid->addColumnText('ORGANIZACE', 'Organizace')
              ->setSortable()
              ->setFilterMultiSelect(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
@@ -36,16 +35,14 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
 
         $grid->addColumnText('POZNAMKA', 'Poznámka')
              ->setSortable()
-    
              ->setFilterText();
 
-        $grid->addColumnText('UCINNA_LATKA',  'Učinná látka')
+        $grid->addColumnText('UCINNA_LATKA', 'Učinná látka')
              ->setSortable()
              ->setFilterText();
 
         $grid->addColumnText('BIOSIMOLAR', 'Biosimilar')
              ->setSortable()
-        
              ->setFilterText();
 
         $grid->addColumnText('ATC', 'ATC')
@@ -54,7 +51,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
              ->setFilterText()
              ->setSplitWordsSearch(true);
 
-        // Stavy pojišťoven - pouze ty požadované
+        // ✅ STAVY POJIŠŤOVEN (zachováno stejné jako v původním)
         $pojistovny = ['111', '201', '205', '207', '209', '211', '213'];
 
         foreach ($pojistovny as $value) {
@@ -79,27 +76,36 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  ->setFilterText();
         }
 
-        // Přidání DG detailu (rozkliknutí) - změna textu
+        // ✅ DG DETAIL (zachováno stejné jako v původním)
         $grid->setItemsDetail(true, "ID_LEKY")
              ->setClass("btn btn-primary btn-sm ajax")
-             ->setTitle("Detail informace o léku")
+             ->setTitle("Diagnostické skupiny")
              ->setText("Detail (Info)")
              ->setIcon("arrow-down")
              ->setTemplateParameters(["ID_LEKY"=>"ID_LEKY"])
              ->setType("template")
              ->setTemplate(__DIR__."/../templates/Zjednodusene/itemDetail.latte");
 
-        // Možnost hromadných akcí pro správce
+        // ✅ HROMADNÉ AKCE (zachováno stejné jako v původním)
         if (($prava == '9' || $prava == '2') && $poj == 1) {
-            $grid->addGroupButtonAction('Hromadná změna')
+            $grid->addGroupButtonAction('Hromadná změna pojišťoven')
                  ->setClass("btn btn-success")
                  ->setAttribute("style", "float:initial !important;")
                  ->onClick[] = function ($id) use ($grid) {
                      $grid->presenter->redirect(':Leky:Zjednodusene:Hromad', json_encode($id));
                  };
+            $grid->addGroupButtonAction('Hromadná změna dg skupiny')
+                 ->setClass("btn btn-primary")
+                 ->setAttribute("style", "float:initial !important;")
+                 ->onClick[] = function ($id) use ($grid) {
+                     $grid->presenter->redirect(':Leky:Zjednodusene:Hromadiag', json_encode($id));
+                 };
+        } else {
+            $grid->addGroupButtonAction("")
+                 ->setAttribute("style", "display:none;");
         }
 
-        // Přidání globálního vyhledávání pomocí group_action containeru
+        // ✅ GLOBÁLNÍ VYHLEDÁVÁNÍ + HISTORIE CHECKBOX (zachováno)
         $container = $grid->getComponent("filter-group_action");
         /** @var \Nette\Forms\Container $container */
         
@@ -109,13 +115,21 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                   ->setHtmlAttribute("style", "width:250px !important; margin-right: 15px")
                   ->setDefaultValue($grid->getSessionData("globalSearch"));
 
+        $container->addCheckbox("histori", "Akord léky: ")
+                  ->setDefaultValue($grid->getSessionData("histori"))
+                  ->setHtmlId('histor')
+                  ->setHtmlAttribute("class", "checkbox")
+                  ->getControlPrototype()
+                  ->setAttribute("onchange", "$(this).parents('form').submit();");
+
         $container->getForm()->onSubmit[] = function ($form) use ($grid) {
             $values = $form->getValues();
+            $values->group_action->globalSearch = $values->group_action->globalSearch ?? null;
+            $values->group_action->histori = $values->group_action->histori ?? null;
+            
             if ($values->group_action->globalSearch) {
                 $searchTerm = $values->group_action->globalSearch;
                 $grid->saveSessionData('globalSearch', $searchTerm);
-                
-                // Filtrování datasource podle vyhledávacího termínu
                 $filteredData = $grid->presenter->BaseModel->getDataSourceWithGlobalSearch(
                     $searchTerm,
                     $grid->getSessionData()->lekarnaVyber ?? null, 
@@ -129,16 +143,35 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                     $grid->getSessionData()->histori ?? null
                 ));
             }
+            
+            if ($values->group_action->histori) {
+                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber, $values->group_action->histori));
+                $grid->getSessionData()->histori = $values->group_action->histori;
+            } elseif (!$values->group_action->histori) {
+                unset($grid->getSessionData()->histori, $values->group_action->histori);
+                $values->group_action->histori = NULL;
+                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber, $values->group_action->histori));
+            }
             $grid->reload();
         };
 
+        // ✅ AKCE TLAČÍTKA (zachováno stejné jako v původním)
         if ($prava == '9' || $prava == '2') {
             $grid->addToolbarButton("new")
                  ->setText("Nový lék")
                  ->setClass("btn btn-success")
                  ->setIcon("plus")
                  ->setTitle("Přidá nový lék");
+        }
 
+        // ✅ SUKL ODKAZ (zachováno stejné jako v původním)
+        $grid->addAction('sukl', 'Sukl', 'web')
+             ->addAttributes(["target" => "_blank"])
+             ->setClass("btn btn-info")
+             ->setIcon("info");
+
+        // ✅ EDITACE (zachováno stejné jako v původním)
+        if ($prava == '9' || $prava == '2') {
             $grid->addAction('edit', 'Editace', 'edit')
                  ->setClass("btn btn-warning")
                  ->setIcon("pencil");
@@ -146,14 +179,24 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
 
         return $grid;
     }
+
+    // ✅ DG GRID (zachováno stejné jako v původním)
     public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
         $grid->setPrimaryKey("ID");
         $grid->setTranslator($this->getCsTranslator());
         $grid->setColumnsHideable();
 
-        $grid->addColumnText('NAZ', 'Lék')
+        $grid->addColumnText('ID', '#')
              ->setSortable()
              ->setFilterText();
+
+        $grid->addColumnText('ID_LEKY', 'Lék')
+             ->setSortable()
+             ->setFilterText();
+
+        $grid->addColumnText('ORGANIZACE', 'Organizace')
+             ->setSortable()
+             ->setFilterMultiSelect(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
 
         $grid->addColumnText('POJISTOVNA', 'Pojišťovna')
              ->setSortable()
@@ -192,6 +235,9 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                           ->setDefaultValue($ID_LEKY)
                           ->setHtmlAttribute('readonly');
 
+                 $container->addSelect('ORGANIZACE','ORGANIZACE')
+                          ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
+
                  $container->addSelect('POJISTOVNA','Pojišťovna')
                           ->setItems([0=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
                  
@@ -218,6 +264,10 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  $container->addText("ID_LEKY", "ID Léku")
                           ->setHtmlAttribute('readonly');
 
+                 $container->addSelect('ORGANIZACE','ORGANIZACE')
+                          ->setHtmlAttribute('readonly')
+                          ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
+
                  $container->addSelect('POJISTOVNA', 'Pojišťovna')
                           ->setHtmlAttribute('readonly')
                           ->setItems([0=>'Všechny'] + \App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
@@ -240,11 +290,13 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
 
         $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
             $ID_LEKY = $item['ID_LEKY'];
+            $ORGANIZACE = $item['ORGANIZACE'];
             $POJISTOVNA = $item['POJISTOVNA'];
             $PLATNOST_OD = $item['DG_PLATNOST_OD'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_OD'])->format('Y-m-d') : NULL;
             $PLATNOST_DO = $item['DG_PLATNOST_DO'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_DO'])->format('Y-m-d') : NULL;
             $container->setDefaults([
                 'ID_LEKY' => $ID_LEKY,
+                'ORGANIZACE' => $ORGANIZACE,
                 'POJISTOVNA' => $POJISTOVNA,
                 'VILP' => $item['VILP'],
                 'DG_NAZEV' => $item['DG_NAZEV'],
