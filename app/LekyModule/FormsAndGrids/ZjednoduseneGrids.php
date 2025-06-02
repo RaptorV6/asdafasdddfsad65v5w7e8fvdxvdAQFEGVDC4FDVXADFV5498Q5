@@ -22,7 +22,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         // Nastavení defaultního řazení jako v původním gridu
         $grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
 
-        // Pouze požadované sloupce
+    
         
         $grid->addColumnText('ORGANIZACE', 'Organizace')
              ->setSortable()
@@ -34,19 +34,18 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
              ->setFilterText()
              ->setSplitWordsSearch(true);
 
-        $grid->addColumnText('POZNAMKA', 'Poznámka pro všechny ZP')
+        $grid->addColumnText('POZNAMKA', 'Poznámka')
              ->setSortable()
-             ->setDefaultHide() // Skrýt ve výchozím stavu
+    
              ->setFilterText();
 
-        $grid->addColumnText('UCINNA_LATKA', 'Učinná látka')
+        $grid->addColumnText('UCINNA_LATKA',  'Učinná látka')
              ->setSortable()
-             ->setDefaultHide() // Skrýt ve výchozím stavu
              ->setFilterText();
 
         $grid->addColumnText('BIOSIMOLAR', 'Biosimilar')
              ->setSortable()
-             ->setDefaultHide() // Skrýt ve výchozím stavu
+        
              ->setFilterText();
 
         $grid->addColumnText('ATC', 'ATC')

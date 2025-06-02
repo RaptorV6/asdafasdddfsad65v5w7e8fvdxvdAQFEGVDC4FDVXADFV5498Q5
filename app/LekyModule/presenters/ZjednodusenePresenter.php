@@ -6,7 +6,7 @@ namespace App\LekyModule\Presenters;
 use Nette\Application\UI\Form;
 use Nette\Application\UI\Multiplier;
 use Ublaboo\DataGrid\DataGrid;
-use App\LekyModule\Model\Leky;
+use App\LekyModule\Model\LekyZjednoduseny;
 use Ublaboo\DataGrid\AkesoGrid;
 
 class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
@@ -17,7 +17,7 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
     /** @var \App\LekyModule\Forms\ZjednoduseneFormFactory @inject */
     public $FormFactory;
     
-    /** @var \App\LekyModule\Model\Leky @inject */
+    /** @var \App\LekyModule\Model\LekyZjednoduseny @inject */
     public $BaseModel;
     
     /** @var \App\LogyModule\Model\Logy @inject */
@@ -50,10 +50,9 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         }
 
         $this->GridFactory->setZjednoduseneGrid($grid, $this->user->getIdentity()->prava, $this->user->getIdentity()->modul_poj, $defaultHodnoty);
-        $grid->setDataSource($this->BaseModel->getDataSource($grid->getSessionData()->lekarnaVyber, $grid->getSessionData()->histori));
+        $grid->setDataSource($this->BaseModel->getDataSourceZjednodusene($grid->getSessionData()->lekarnaVyber, $grid->getSessionData()->histori));
         return $grid;
     }
-
 
     public function createComponentDGDataGrid(string $name): Multiplier{
         return new Multiplier(function ($ID_LEKY) {
@@ -61,7 +60,7 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
             $grid = new DataGrid(null, $ID_LEKY);
             $this->GridFactory->setDGGrid($grid, $ID_LEKY);
             
-            // Použití nové metody která obsahuje název léku
+            // Použití metody která načte DG podle ID léku
             $grid->setDataSource($this->BaseModel->getDataSource_DG_WithName($ID_LEKY));
             
             $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
