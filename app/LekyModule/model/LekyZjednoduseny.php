@@ -12,6 +12,43 @@ class LekyZjednoduseny extends \App\Model\AModel {
           LEKY = "LEKY",
           AKESO_LEKY = "AKESO_LEKY";
 
+    // ✅ OPRAVA - VRACÍ FLUENT MÍSTO POLE
+    public function getDataSourceZjednodusene($organizace = null, $history = null) {
+        $select = $this->db->select("*")->from(self::LEKY_VIEW);
+        
+        if ($organizace) {
+            $select->where("ORGANIZACE = %s", $organizace);
+        }
+
+        if (!$history) {
+            $select->where("AKORD = 0");
+        }
+
+        // ✅ VRÁTIT FLUENT OBJEKT PRO GRID
+        return $select;
+    }
+
+    // ✅ OPRAVA - GLOBÁLNÍ VYHLEDÁVÁNÍ TAKÉ FLUENT
+    public function getDataSourceWithGlobalSearch($searchTerm, $organizace = null, $history = null) {
+        $select = $this->db->select("*")->from(self::LEKY_VIEW);
+
+        if ($searchTerm) {
+            $select->where("(NAZ LIKE %~like~ OR ATC LIKE %~like~ OR UCINNA_LATKA LIKE %~like~ OR BIOSIMOLAR LIKE %~like~)",
+                        $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+        }
+
+        if ($organizace) {
+            $select->where("ORGANIZACE = %s", $organizace);
+        }
+
+        if (!$history) {
+            $select->where("AKORD = 0");
+        }
+
+        // ✅ VRÁTIT FLUENT OBJEKT
+        return $select;
+    }
+
     public function getLeky($id) {
         return $this->db->select("*")
                         ->from(self::LEKY_EDIT)
@@ -57,19 +94,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
         return $this->db->query("MERGE INTO " . self::POJISTOVNY_DG . " as poj USING (SELECT ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s) AS spoj ON poj.ID_LEKY = spoj.ID_LEKY AND poj.ORGANIZACE = spoj.ORGANIZACE AND poj.POJISTOVNA = spoj.POJISTOVNA AND poj.DG_NAZEV = spoj.DG_NAZEV WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s, VILP = %b, DG_PLATNOST_OD = %d, DG_PLATNOST_DO = %d WHEN NOT MATCHED THEN INSERT (ID_LEKY, ORGANIZACE, POJISTOVNA, DG_NAZEV, VILP, DG_PLATNOST_OD, DG_PLATNOST_DO) VALUES(%s,%s,%i,%s,%b,%d,%d);", $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO);
     }
 
-    public function getDataSourceZjednodusene($organizace = null, $history = null) {
-        $select = $this->db->select("*")->from(self::LEKY_VIEW);
-        if ($organizace) { $select->where("ORGANIZACE = %s", $organizace); }
-        if (!$history) { $select->where("AKORD = 0"); }
-        $allData = $select->fetchAll();
-        $uniqueLeky = [];
-        foreach ($allData as $row) {
-            $nazev = $row->NAZ;
-            if (!isset($uniqueLeky[$nazev])) { $uniqueLeky[$nazev] = $row; }
-        }
-        return array_values($uniqueLeky);
-    }
-
+    // ✅ KOMPATIBILITA
     public function getDataSource($organizace = null, $history = null) {
         return $this->getDataSourceZjednodusene($organizace, $history);
     }

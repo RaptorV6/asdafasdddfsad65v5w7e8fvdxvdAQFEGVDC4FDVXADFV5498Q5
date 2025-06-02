@@ -1,5 +1,5 @@
 <?php
-// app/LekyModule/FormsAndGrids/ZjednoduseneGrids.php
+// app/LekyModule/FormsAndGrids/ZjednoduseneGrids.php - PŘEPSAT KOMPLETNĚ
 
 namespace App\LekyModule\Grids;
 
@@ -19,7 +19,6 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         $grid->setStrictSessionFilterValues(false);
         $grid->setColumnsHideable();
         
-        // Nastavení defaultního řazení jako v původním gridu
         $grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
 
         // ✅ ZJEDNODUŠENÉ SLOUPCE (pouze požadované)
@@ -105,16 +104,10 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  ->setAttribute("style", "display:none;");
         }
 
-        // ✅ GLOBÁLNÍ VYHLEDÁVÁNÍ + HISTORIE CHECKBOX (zachováno)
+        // ✅ ZKOPÍROVÁNO Z OFICIÁLNÍ VERZE - PŘESNĚ STEJNÉ
         $container = $grid->getComponent("filter-group_action");
         /** @var \Nette\Forms\Container $container */
         
-        $container->addText("globalSearch", "Globální hledání:")
-                  ->setHtmlAttribute("placeholder", "Název, ATC, účinná látka...")
-                  ->setHtmlAttribute("class", "form-control")
-                  ->setHtmlAttribute("style", "width:250px !important; margin-right: 15px")
-                  ->setDefaultValue($grid->getSessionData("globalSearch"));
-
         $container->addCheckbox("histori", "Akord léky: ")
                   ->setDefaultValue($grid->getSessionData("histori"))
                   ->setHtmlId('histor')
@@ -122,32 +115,24 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                   ->getControlPrototype()
                   ->setAttribute("onchange", "$(this).parents('form').submit();");
 
-        $container->getForm()->onSubmit[] = function ($form) use ($grid) {
+        // ✅ ZKOPÍROVÁNO Z OFICIÁLNÍ VERZE
+        $container->getForm()
+        ->onSubmit[] = function ($form) use ($grid) {
             $values = $form->getValues();
-            $values->group_action->globalSearch = $values->group_action->globalSearch ?? null;
+            $values->group_action->lekarnaVyber = $values->group_action->lekarnaVyber ?? null;
             $values->group_action->histori = $values->group_action->histori ?? null;
-            
-            if ($values->group_action->globalSearch) {
-                $searchTerm = $values->group_action->globalSearch;
-                $grid->saveSessionData('globalSearch', $searchTerm);
-                $filteredData = $grid->presenter->BaseModel->getDataSourceWithGlobalSearch(
-                    $searchTerm,
-                    $grid->getSessionData()->lekarnaVyber ?? null, 
-                    $grid->getSessionData()->histori ?? null
-                );
-                $grid->setDataSource($filteredData);
-            } else {
-                $grid->saveSessionData('globalSearch', null);
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSource(
-                    $grid->getSessionData()->lekarnaVyber ?? null, 
-                    $grid->getSessionData()->histori ?? null
-                ));
+            if ($values->group_action->lekarnaVyber) {
+                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber));
+                $grid->getSessionData()->lekarnaVyber = $values->group_action->lekarnaVyber;
+            } elseif (!$values->group_action->lekarnaVyber) {
+                unset($grid->getSessionData()->lekarnaVyber);
+                $values->group_action->lekarnaVyber = NULL;
+                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber));
             }
-            
             if ($values->group_action->histori) {
                 $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber, $values->group_action->histori));
                 $grid->getSessionData()->histori = $values->group_action->histori;
-            } elseif (!$values->group_action->histori) {
+            } elseif (!$values->group_action->lekarnaVyber) {
                 unset($grid->getSessionData()->histori, $values->group_action->histori);
                 $values->group_action->histori = NULL;
                 $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber, $values->group_action->histori));
