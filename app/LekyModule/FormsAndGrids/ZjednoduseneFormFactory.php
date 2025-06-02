@@ -15,47 +15,48 @@ class ZjednoduseneFormFactory {
         // constructor
     }
 
-    public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
-        
-        $form->addHidden('ID', 'id');
+    // V app/LekyModule/FormsAndGrids/ZjednoduseneFormFactory.php - metoda setZjednoduseneForm()
 
-        // ✅ POUZE POŽADOVANÁ POLE (zjednodušeno)
-        $form->addMultiSelect('ORGANIZACE', 'Organizace')
-             ->setHtmlAttribute('class', 'multiselect')
-             ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
-             ->setRequired('Musí být vybrána alespoň jedna organizace');
+public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
+    
+    $form->addHidden('ID_LEKY', 'id'); // ✅ Oprava názvu
 
-        $form->addText('NAZ', 'Název')
-             ->setRequired('Musí být vyplněný "%label"')
-             ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 70);
+    $form->addMultiSelect('ORGANIZACE', 'Organizace')
+         ->setHtmlAttribute('class', 'multiselect')
+         ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
+         ->setRequired('Musí být vybrána alespoň jedna organizace');
 
-        $form->addTextArea('POZNAMKA', 'Poznámka')
+    $form->addText('NAZ', 'Název')
+         ->setRequired('Musí být vyplněný "%label"')
+         ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 70);
+
+    $form->addTextArea('POZNAMKA', 'Poznámka pro všechny ZP') // ✅ Upravený popisek
+         ->setNullable();
+
+    $form->addTextArea('UCINNA_LATKA', 'Učinná látka')
+         ->setNullable();
+
+    $form->addTextArea('BIOSIMOLAR', 'Biosimilar')
+         ->setNullable();
+
+    $form->addText('ATC', 'ATC skupina')
+         ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
+         ->setNullable();
+
+    // Stavy pojišťoven
+    foreach (\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY as $pojistovna => $nazev) {
+        $form->addSelect($pojistovna . '_STAV', $nazev . ' - Stav')
+             ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::STAV)
+             ->addCondition(Form::EQUAL, 'Nasmlouváno')
+             ->toggle('nasmlouvano_' . $pojistovna)
+             ->endCondition();
+
+        $form->addText($pojistovna . '_NASMLOUVANO_OD', $nazev . ' - Nasmlouváno od')
+             ->setHtmlAttribute('type', 'date')
+             ->setOption('id', 'nasmlouvano_' . $pojistovna)
              ->setNullable();
-
-        $form->addTextArea('UCINNA_LATKA', 'Učinná látka')
-             ->setNullable();
-
-        $form->addTextArea('BIOSIMOLAR', 'Biosimilar')
-             ->setNullable();
-
-        $form->addText('ATC', 'ATC skupina')
-             ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
-             ->setNullable();
-
-        // ✅ ZJEDNODUŠENÉ NASTAVENÍ STAVŮ POJIŠŤOVEN (pouze stavy)
-        foreach (\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY as $pojistovna => $nazev) {
-            $form->addSelect($pojistovna . '_STAV', $nazev . ' - Stav')
-                 ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::STAV)
-                 ->addCondition(Form::EQUAL, 'Nasmlouváno')
-                 ->toggle('nasmlouvano_' . $pojistovna)
-                 ->endCondition();
-
-            $form->addText($pojistovna . '_NASMLOUVANO_OD', $nazev . ' - Nasmlouváno od')
-                 ->setHtmlAttribute('type', 'date')
-                 ->setOption('id', 'nasmlouvano_' . $pojistovna)
-                 ->setNullable();
-        }
     }
+}
 
     // ✅ OPRAVA: Správný typ pro Form parametr
     public function setHromadDiagForm(\Nette\Application\UI\Form $form) {

@@ -33,7 +33,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
              ->setFilterText()
              ->setSplitWordsSearch(true);
 
-        $grid->addColumnText('POZNAMKA', 'Poznámka')
+        $grid->addColumnText('POZNAMKA', 'Poznámka pro všechny ZP')
              ->setSortable()
              ->setFilterText();
 

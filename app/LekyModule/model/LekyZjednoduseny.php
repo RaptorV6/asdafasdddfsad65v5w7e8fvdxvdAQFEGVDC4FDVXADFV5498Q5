@@ -11,6 +11,17 @@ class LekyZjednoduseny extends \App\Model\AModel {
           AKESO_LEKY = "AKESO_LEKY";
 
     /**
+     * ✅ PŘIDÁNÍ CHYBĚJÍCÍ METODY PRO EDITACI
+     */
+    public function getLeky($id) {
+        return $this->db->select("*")
+                        ->from(self::LEKY_VIEW)
+                        ->where('ID_LEKY = %s', $id)
+                        ->orderBy('ID_LEKY')
+                        ->fetch();
+    }
+
+    /**
      * ✅ ŘEŠENÍ PRO STARŠÍ SQL SERVER - vrací pole místo fluent
      */
     public function getDataSourceZjednodusene($organizace = null, $history = null) {

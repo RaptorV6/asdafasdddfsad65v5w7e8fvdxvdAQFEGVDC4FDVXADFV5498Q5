@@ -100,14 +100,13 @@ class Leky extends \App\Model\AModel {
 		return $this->db->select("*")->from(self::DG_SKUP);
 	}
 
-	public function getLeky($id) {
-		return $this->db->select("*")
-						->from(self::LEKY_EDIT)
-						->where('ID_LEKY = %s', $id)
-						->orderBy('ID_LEKY')
-						->fetch();
-	}
-
+public function getLeky($id) {
+    return $this->db->select("*")
+                    ->from(self::LEKY_VIEW)
+                    ->where('ID_LEKY = %s', $id)
+                    ->orderBy('ID_LEKY')
+                    ->fetch();
+}
 	public function getAtc_skup($ATC1) {
 		return $this->db->select("*")
 						->from(self::DG_SKUP)
