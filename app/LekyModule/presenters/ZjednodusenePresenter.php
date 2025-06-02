@@ -40,11 +40,9 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         $this->template->nadpis = 'zjednodušený přehled léků';
     }
 
-    // ✅ HLAVNÍ GRID (KONEČNĚ OPRAVENO)
     protected function createComponentZjednoduseneDataGrid(string $name) {
         $grid = new AkesoGrid($this, $name);
         
-        // ✅ OPRAVA: Používám stejný způsob jako v původním LekyPresenter
         if ($this->user->getIdentity()->preferovana_organizace !== null && $grid->getSessionData('ORGANIZACE') === null) {
             $defaultHodnoty = array_intersect(explode(', ', $this->user->getIdentity()->preferovana_organizace), self::ORGANIZACE_VISIBLE);
         } else {
@@ -56,14 +54,12 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         return $grid;
     }
 
-    // ✅ DG GRID (zachováno stejné jako v původním)
     public function createComponentDGDataGrid(string $name): Multiplier{
         return new Multiplier(function ($ID_LEKY) {
 
             $grid = new DataGrid(null, $ID_LEKY);
             $this->GridFactory->setDGGrid($grid, $ID_LEKY);
             
-            // Použití metody která načte DG podle ID léku
             $grid->setDataSource($this->BaseModel->getDataSource_DG_WithName($ID_LEKY));
             
             $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
@@ -82,21 +78,49 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         });
     }
 
-    // ✅ FORMULÁŘ PRO LÉKY (OPRAVENO)
     protected function createComponentZjednoduseneForm(string $name) {
         $form = new \Nette\Application\UI\Form($this, $name);
         
-        // ✅ OPRAVA: Správné volání metody
-        $this->FormFactory->setZjednoduseneForm($form);
-        
-        // Pokud editujeme, načteme data
-        if ($this->getParameter('ID_LEKY')) {
-            $lek = $this->BaseModel->getLeky($this->getParameter('ID_LEKY'));
-            if ($lek && isset($lek->ORGANIZACE)) {
-                $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
-                $form->setDefaults($lek);
+        $lek = $this->BaseModel->getLeky($this->getParameter('ID_LEKY'));
+
+        if (isset($lek->ORGANIZACE)) {
+            $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
+        }
+        $lek['POJ'] = [];
+        $values = '';
+
+        foreach (self::ORGANIZACE_VISIBLE as $org) {
+            $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($this->getParameter('ID_LEKY'), $org));
+            if (isset($lek->$org)) {
+                foreach ($lek->$org as $value => $key) {
+                    // Oprava RL pole - převod na string index
+                    if ($lek[$org][$value]['RL'] === '') {
+                        $lek[$org][$value]['RL'] = '';
+                    } elseif ($lek[$org][$value]['RL'] == 1 || $lek[$org][$value]['RL'] == 0) {
+                        $lek[$org][$value]['RL'] = (string)$lek[$org][$value]['RL'];
+                        $lek[$org][$value]['Revizak'] = true;
+                    } else {
+                        $lek[$org][$value]['Revizak'] = false;
+                    }
+                    $lek[$org][$value]['DG'] = $this->BaseModel->getPojistovny_DG($this->getParameter('ID_LEKY'), $org, $value);
+                    if (!in_array($value, $lek['POJ'])) {
+                        $values = $values . ", " . $value;
+                    }
+                }
             }
         }
+        if ($values) {
+            $lek['POJ'] = explode(', ', trim($values, ", "));
+        }
+
+        $this->FormFactory->setZjednoduseneForm($form);
+        $form->onError[] = function ($form) {
+            \App\LekyModule\Presenters\LekyPresenter::processFormErrors($form, $this);
+        };
+        if (!empty($lek->ORGANIZACE)) {
+            $lek->ORGANIZACE = array_filter($lek->ORGANIZACE);
+        }
+        $form->setDefaults($lek);
         
         $form->addGroup();
         $form->addSubmit('send', 'Uložit')
@@ -106,13 +130,11 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         return $form;
     }
 
-    // ✅ RENDER METODY (KONEČNĚ OPRAVENO)
     public function renderDefault() {
         $this->template->nadpis = 'zjednodušený přehled léků';
     }
 
     public function renderNew() {
-        // ✅ OPRAVA: Používám stejný způsob jako v původním LekyPresenter
         $session = $this->getComponent('zjednoduseneDataGrid');
         $savedata = $this->getComponent('zjednoduseneForm');
         
@@ -149,37 +171,33 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         $this->template->organizace = self::ORGANIZACE_VISIBLE;
     }
 
-    // ✅ SUKL ODKAZ (zachováno stejné jako v původním)
     public function actionWeb($ID_LEKY) {
         $this->redirectUrl('https://prehledy.sukl.cz/prehled_leciv.html#/leciva/' . $ID_LEKY);
     }
 
-    // ✅ ZPRACOVÁNÍ FORMULÁŘE
     public function zjednoduseneFormSucceeded($form) {
         $values = $form->getValues();
         
         $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
         
-        if(!(int)($values->ID)) {
-            unset($values->ID);
+        if(!(int)($values->ID_LEKY)) {
+            unset($values->ID_LEKY);
             $this->BaseModel->insertLeky($values);
             $this->flashMessage('Lék byl přidán.', "success");
         } else {
-            $ID = $values->ID;
-            unset($values->ID);
+            $ID = $values->ID_LEKY;
+            unset($values->ID_LEKY);
             $this->flashMessage('Lék byl upraven.', "success");
         }
         
         $this->redirect("default");
     }
 
-    // ✅ AJAX HANDLERY
     public function handleDgskup($term) {
         $fristHalfItems = $this->BaseModel->getDg($term);
         $this->sendResponse(new \Nette\Application\Responses\JsonResponse($fristHalfItems));
     }
 
-    // ✅ HROMADNÉ FORMULÁŘE
     protected function createComponentHromadForm(string $name) {
         $form = new \Nette\Application\UI\Form($this, $name);
         $form->addHidden('ID')

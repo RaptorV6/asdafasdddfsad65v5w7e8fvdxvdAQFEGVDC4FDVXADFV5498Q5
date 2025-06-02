@@ -6,182 +6,74 @@ namespace App\LekyModule\Model;
 class LekyZjednoduseny extends \App\Model\AModel {
 
     const LEKY_VIEW = "AKESO_LEKY_VIEW",
+          LEKY_EDIT = "AKESO_LEKY_EDIT",
+          POJISTOVNY = "AKESO_LEKY_POJISTOVNY",
           POJISTOVNY_DG = "AKESO_LEKY_POJISTOVNY_DG",
           LEKY = "LEKY",
           AKESO_LEKY = "AKESO_LEKY";
 
-    /**
-     * ✅ PŘIDÁNÍ CHYBĚJÍCÍ METODY PRO EDITACI
-     */
     public function getLeky($id) {
         return $this->db->select("*")
-                        ->from(self::LEKY_VIEW)
+                        ->from(self::LEKY_EDIT)
                         ->where('ID_LEKY = %s', $id)
                         ->orderBy('ID_LEKY')
                         ->fetch();
     }
 
-    /**
-     * ✅ ŘEŠENÍ PRO STARŠÍ SQL SERVER - vrací pole místo fluent
-     */
+    public function getPojistovny($id, $org) {
+        return $this->db->select("*")
+                        ->from(self::POJISTOVNY)
+                        ->where('ID_LEKY = %s and ORGANIZACE = %s', $id, $org)
+                        ->orderBy('ID_LEKY')
+                        ->fetchAssoc('POJISTOVNA');
+    }
+
+    public function getPojistovny_DG($id, $org, $poj) {
+        return $this->db->select("*")
+                        ->from(self::POJISTOVNY_DG)
+                        ->where('ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %i and (DG_PLATNOST_DO >= getdate() or DG_PLATNOST_DO is null)', $id, $org, $poj)
+                        ->orderBy('ID_LEKY')
+                        ->fetchAll();
+    }
+
+    public function getDg($values) {
+        return $this->db->select('KOD_SKUP')
+                        ->from(\App\CiselnikyModule\Presenters\DgPresenter::DG)
+                        ->where('KOD_SKUP like %s', $values . '%')
+                        ->fetchPairs('KOD_SKUP', 'KOD_SKUP');
+    }
+
+    public function insert_edit_pojistovny($value) {
+        $value->VILP_PLATNOST_OD = $value->VILP_PLATNOST_OD ?? null;
+        $value->VILP_PLATNOST_DO = $value->VILP_PLATNOST_DO ?? null;
+        $this->db->query("MERGE INTO " . self::POJISTOVNY . " as poj USING (SELECT ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i) AS spoj ON poj.ID_LEKY = spoj.ID_LEKY AND poj.ORGANIZACE = spoj.ORGANIZACE AND poj.POJISTOVNA = spoj.POJISTOVNA WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, NASMLOUVANO_OD = %d, ORGANIZACE = %s, POJISTOVNA =%i, STAV = %s, RL = %s, SMLOUVA = %s, POZNAMKA = %s WHEN NOT MATCHED THEN INSERT (ID_LEKY, NASMLOUVANO_OD, ORGANIZACE, POJISTOVNA, STAV, RL, SMLOUVA, POZNAMKA) VALUES(%s,%d,%s,%i,%s,%s,%s,%s); ", $value->ID_LEKY, $value->ORGANIZACE, $value->POJISTOVNA, $value->ID_LEKY, $value->NASMLOUVANO_OD, $value->ORGANIZACE, $value->POJISTOVNA, $value->STAV, $value->RL, $value->SMLOUVA, $value->POZNAMKA, $value->ID_LEKY, $value->NASMLOUVANO_OD, $value->ORGANIZACE, $value->POJISTOVNA, $value->STAV, $value->RL, $value->SMLOUVA, $value->POZNAMKA);
+    }
+
+    public function insertLeky($value) {
+        return $this->db->query("MERGE INTO " . self::AKESO_LEKY . " as lek USING (SELECT ID_LEKY = %s) AS id_leky ON lek.ID_LEKY = id_leky.ID_LEKY WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, NAZ = %s, DOP = %s, SILA = %s, BALENI = %s, POZNAMKA = %s, UCINNA_LATKA = %s, BIOSIMOLAR = %s, ORGANIZACE = (%s), ATC = %s, ATC3 = %s, UHR1 = %f, UHR2 = %f, UHR3 = %f, CENA_FAKTURACE = %f, CENA_MAX = %f,  CENA_VYROBCE_BEZDPH = %f, CENA_SENIMED_BEZDPH = %f, CENA_MUS_PHARMA = %f, CENA_MUS_NC_BEZDPH = %f, CENA_MUS_NC = %f, UHRADA = %f, KOMPENZACE = %f, BONUS = %f WHEN NOT MATCHED THEN INSERT (ID_LEKY,NAZ,DOP,SILA,BALENI,POZNAMKA,UCINNA_LATKA,BIOSIMOLAR,ORGANIZACE,ATC,ATC3,UHR1,UHR2,UHR3,CENA_FAKTURACE,CENA_MAX, CENA_VYROBCE_BEZDPH, CENA_SENIMED_BEZDPH, CENA_MUS_PHARMA, CENA_MUS_NC_BEZDPH, CENA_MUS_NC, UHRADA, KOMPENZACE, BONUS) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,(%s),%s,%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f); ", $value->ID_LEKY, $value->ID_LEKY, $value->NAZ, $value->DOP, $value->SILA, $value->BALENI, $value->POZNAMKA, $value->UCINNA_LATKA, $value->BIOSIMOLAR, $value->ORGANIZACE, $value->ATC, $value->ATC3, $value->UHR1, $value->UHR2, $value->UHR3, $value->CENA_FAKTURACE, $value->CENA_MAX, $value->CENA_VYROBCE_BEZDPH, $value->CENA_SENIMED_BEZDPH, $value->CENA_MUS_PHARMA, $value->CENA_MUS_NC_BEZDPH, $value->CENA_MUS_NC, $value->UHRADA, $value->KOMPENZACE, $value->BONUS, $value->ID_LEKY, $value->NAZ, $value->DOP, $value->SILA, $value->BALENI, $value->POZNAMKA, $value->UCINNA_LATKA, $value->BIOSIMOLAR, $value->ORGANIZACE, $value->ATC, $value->ATC3, $value->UHR1, $value->UHR2, $value->UHR3, $value->CENA_FAKTURACE, $value->CENA_MAX, $value->CENA_VYROBCE_BEZDPH, $value->CENA_SENIMED_BEZDPH, $value->CENA_MUS_PHARMA, $value->CENA_MUS_NC_BEZDPH, $value->CENA_MUS_NC, $value->UHRADA, $value->KOMPENZACE, $value->BONUS);
+    }
+
+    public function insert_edit_pojistovny_dg($dg) {
+        return $this->db->query("MERGE INTO " . self::POJISTOVNY_DG . " as poj USING (SELECT ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s) AS spoj ON poj.ID_LEKY = spoj.ID_LEKY AND poj.ORGANIZACE = spoj.ORGANIZACE AND poj.POJISTOVNA = spoj.POJISTOVNA AND poj.DG_NAZEV = spoj.DG_NAZEV WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s, VILP = %b, DG_PLATNOST_OD = %d, DG_PLATNOST_DO = %d WHEN NOT MATCHED THEN INSERT (ID_LEKY, ORGANIZACE, POJISTOVNA, DG_NAZEV, VILP, DG_PLATNOST_OD, DG_PLATNOST_DO) VALUES(%s,%s,%i,%s,%b,%d,%d);", $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO);
+    }
+
     public function getDataSourceZjednodusene($organizace = null, $history = null) {
-        // Nejdřív získáme všechna data
-        $select = $this->db->select("*")
-                ->from(self::LEKY_VIEW);
-
-        if ($organizace) {
-            $select->where("ORGANIZACE = %s", $organizace);
-        }
-
-        if (!$history) {
-            $select->where("AKORD = 0");
-        }
-
+        $select = $this->db->select("*")->from(self::LEKY_VIEW);
+        if ($organizace) { $select->where("ORGANIZACE = %s", $organizace); }
+        if (!$history) { $select->where("AKORD = 0"); }
         $allData = $select->fetchAll();
-        
-        // Seskupíme podle názvu v PHP
         $uniqueLeky = [];
         foreach ($allData as $row) {
             $nazev = $row->NAZ;
-            
-            if (!isset($uniqueLeky[$nazev])) {
-                $uniqueLeky[$nazev] = $row; // První výskyt
-            }
+            if (!isset($uniqueLeky[$nazev])) { $uniqueLeky[$nazev] = $row; }
         }
-        
-        // ✅ Vrátíme přímo pole dat místo fluent objektu
         return array_values($uniqueLeky);
     }
 
-    // Přidejte do app/LekyModule/model/LekyZjednoduseny.php
-
-public function getDg($values) {
-    return $this->db->select('KOD_SKUP')
-                    ->from(\App\CiselnikyModule\Presenters\DgPresenter::DG)
-                    ->where('KOD_SKUP like %s', $values . '%')
-                    ->fetchPairs('KOD_SKUP', 'KOD_SKUP');
-}
-
-    /**
-     * ✅ GLOBÁLNÍ vyhledávání - také vrací pole
-     */
-    public function getDataSourceWithGlobalSearch($searchTerm, $organizace = null, $history = null) {
-        $select = $this->db->select("*")
-                ->from(self::LEKY_VIEW);
-
-        if ($searchTerm) {
-            $select->where("(NAZ LIKE %~like~ OR ATC LIKE %~like~ OR UCINNA_LATKA LIKE %~like~ OR BIOSIMOLAR LIKE %~like~)",
-                        $searchTerm, $searchTerm, $searchTerm, $searchTerm);
-        }
-
-        if ($organizace) {
-            $select->where("ORGANIZACE = %s", $organizace);
-        }
-
-        if (!$history) {
-            $select->where("AKORD = 0");
-        }
-
-        $allData = $select->fetchAll();
-        
-        // Seskupíme podle názvu
-        $uniqueLeky = [];
-        foreach ($allData as $row) {
-            $nazev = $row->NAZ;
-            if (!isset($uniqueLeky[$nazev])) {
-                $uniqueLeky[$nazev] = $row;
-            }
-        }
-        
-        // ✅ Vrátíme přímo pole dat
-        return array_values($uniqueLeky);
-    }
-
-    /**
-     * DG detail podle ID léku (ne názvu)
-     */
-    public function getDataSource_DG_WithName($id_leku) {
-        return $this->db->select('
-            ROW_NUMBER() OVER (ORDER BY dg1.ID_LEKY + 1) AS ID,
-            dg1.ID_LEKY,
-            L.NAZ,
-            dg1.ORGANIZACE,
-            dg1.POJISTOVNA,
-            dg1.DG_NAZEV,
-            dg1.VILP,
-            CONVERT(nvarchar(20), dg1.DG_PLATNOST_OD, 104) as DG_PLATNOST_OD,
-            CONVERT(nvarchar(20), dg1.DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
-            ->from(self::POJISTOVNY_DG)->as('dg1')
-            ->leftJoin(self::LEKY_VIEW)->as('L')->on('dg1.ID_LEKY = L.ID_LEKY')
-            ->where('dg1.ID_LEKY = %s and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $id_leku)
-            ->fetchAll();
-    }
-
-    /**
-     * Najít první ID podle názvu
-     */
-    public function getFirstIdByName($nazev) {
-        try {
-            $results = $this->db->select('ID_LEKY')
-                            ->from(self::LEKY_VIEW)
-                            ->where('NAZ = %s', $nazev)
-                            ->fetchAll();
-            
-            return !empty($results) ? $results[0]->ID_LEKY : null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Kompatibilita - fallback na zjednodušenou metodu
-     */
     public function getDataSource($organizace = null, $history = null) {
         return $this->getDataSourceZjednodusene($organizace, $history);
     }
 
-    /**
-     * Přidání DG záznamu
-     */
-    public function set_pojistovny_dg($values){
-        return $this->db->insert(self::POJISTOVNY_DG, $values)->execute();
-    }
-
-    /**
-     * Editace DG záznamu
-     */
-    public function set_pojistovny_dg_edit($values){
-        return $this->db->update(self::POJISTOVNY_DG, [
-            'VILP'=>$values['VILP'],
-            'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],
-            'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']
-        ])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", 
-            $values['ID_LEKY'], 
-            $values['ORGANIZACE'],
-            $values['POJISTOVNA'], 
-            $values['DG_NAZEV']
-        )->execute();
-    }
-
-    /**
-     * Kompatibilita - metoda pro vkládání léků
-     */
-    public function insertLeky($value) {
-        return $this->db->query("MERGE INTO " . self::AKESO_LEKY . " as lek USING (SELECT ID_LEKY = %s) AS id_leky ON lek.ID_LEKY = id_leky.ID_LEKY WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, NAZ = %s, POZNAMKA = %s, UCINNA_LATKA = %s, BIOSIMOLAR = %s, ORGANIZACE = (%s), ATC = %s WHEN NOT MATCHED THEN INSERT (ID_LEKY,NAZ,POZNAMKA,UCINNA_LATKA,BIOSIMOLAR,ORGANIZACE,ATC) VALUES(%s,%s,%s,%s,%s,(%s),%s); ", 
-            $value->ID_LEKY, 
-            $value->ID_LEKY, 
-            $value->NAZ, 
-            $value->POZNAMKA, 
-            $value->UCINNA_LATKA, 
-            $value->BIOSIMOLAR, 
-            $value->ORGANIZACE, 
-            $value->ATC, 
-            $value->ID_LEKY, 
-            $value->NAZ, 
-            $value->POZNAMKA, 
-            $value->UCINNA_LATKA, 
-            $value->BIOSIMOLAR, 
-            $value->ORGANIZACE, 
-            $value->ATC);
-    }
+    public function set_pojistovny_dg($values){ return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); }
+    public function set_pojistovny_dg_edit($values){ return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); }
 }

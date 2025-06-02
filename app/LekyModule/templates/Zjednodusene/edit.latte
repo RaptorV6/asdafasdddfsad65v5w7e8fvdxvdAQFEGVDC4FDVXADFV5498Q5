@@ -8,23 +8,14 @@
         <div n:if="$form->hasErrors()" n:foreach="$form->errors as $error" n:class="alert, 'alert-danger'"><span>{$error}</span></div>   
         <fieldset>
                 <article>
-                    <div class="alert alert-warning">
-                        <strong>Zjednodušené zadávání léku</strong><br>
-                        Zadávejte pouze nejdůležitější informace.
-                    </div>
-                    
                     <table class="lekovnice">
                       <tr>
                         <th colspan="2">Základní informace</th>
                       </tr>
                       <tr>
-                        <td>{label ORGANIZACE /}</td>
-                        <td>{input ORGANIZACE}</td>
-                      </tr>                                          
-                      <tr>
                         <td>{label NAZ /}</td>
                         <td>{input NAZ}</td>
-                      </tr>                                           
+                      </tr>
                       <tr>
                         <td>{label POZNAMKA /}</td>
                         <td>{input POZNAMKA}</td>
@@ -41,23 +32,68 @@
                         <td>{label ATC /}</td>
                         <td>{input ATC}</td>
                       </tr>
+                      <tr>
+                        <td>{label ORGANIZACE /}</td>
+                        <td>{input ORGANIZACE}</td>
+                      </tr>
                     </table>
 
-                    <table class="lekovnice">
-                      <tr>
-                        <th colspan="2">Stavy pojišťoven</th>
-                      </tr>
-                      {foreach ['111', '201', '205', '207', '209', '211', '213'] as $poj}
-                      <tr>
-                        <td>{label {$poj}_STAV /}</td>
-                        <td>{input {$poj}_STAV}</td>
-                      </tr>
-                      <tr id="nasmlouvano_{$poj}">
-                        <td>{label {$poj}_NASMLOUVANO_OD /}</td>
-                        <td>{input {$poj}_NASMLOUVANO_OD}</td>
-                      </tr>
-                      {/foreach}
-                    </table>
+                    {* ✅ PŘESNĚ JAKO OFICIÁLNÍ - SEKCE PRO KAŽDOU POJIŠŤOVNU *}
+                    {foreach ['111', '201', '205', '207', '209', '211', '213'] as $poj}
+                        <table class="lekovnice">
+                          <tr>
+                            <th colspan="5">Organizace: MUS zdravotní pojištovna {$poj}</th>
+                          </tr>
+                          <tr>
+                            <td>{label MUS-{$poj}-STAV /}</td>
+                            <td colspan="4">{input MUS-{$poj}-STAV}</td>
+                          </tr>
+                          <tr id="NASMLOUVANO_DATAMUS{$poj}">
+                            <td>{label MUS-{$poj}-NASMLOUVANO_OD /}</td>
+                            <td colspan="4">{input MUS-{$poj}-NASMLOUVANO_OD}</td>
+                         </tr>
+                          <tr>
+                            <td><label>Revizák</label></td>
+                            <td colspan="4">{input MUS-{$poj}-Revizak}</td>
+                          </tr>
+                          <tr id="revizakMUS{$poj}">
+                            <td>{label MUS-{$poj}-RL /}</td>
+                            <td colspan="4">{input MUS-{$poj}-RL}</td>
+                          </tr>
+                          <tr>
+                            <td>{label MUS-{$poj}-POZNAMKA /}</td>
+                            <td colspan="4">{input MUS-{$poj}-POZNAMKA}</td>
+                          </tr>
+                          <tr>
+                                <td colspan="5" style="background-color: #6BB6FB;"><b><u><big>Diagnostická skupina</big></u></b></td>
+                          </tr>
+                        {foreach $form["MUS-{$poj}-DG"]->getContainers() as $key => $dg}
+                            {var $linksz['MUS'][$poj] = $key}
+                            <tr>
+                                <td>{label MUS-{$poj}-DG-{$key}-DG_NAZEV /}</td>
+                                <td colspan="2">{input MUS-{$poj}-DG-{$key}-DG_NAZEV}</td>
+                                <td><label>VILP</label></td>
+                                <td>{input MUS-{$poj}-DG-{$key}-VILP}</td>
+                            </tr>
+                            <tr>
+                                <td>{label MUS-{$poj}-DG-{$key}-DG_PLATNOST_OD}</td>
+                                <td>{input MUS-{$poj}-DG-{$key}-DG_PLATNOST_OD}</td>
+                                <td>{label MUS-{$poj}-DG-{$key}-DG_PLATNOST_DO}</td>
+                                <td>{input MUS-{$poj}-DG-{$key}-DG_PLATNOST_DO}</td>
+                                <td>{input MUS-{$poj}-DG-{$key}-remove}</td>
+                            </tr>
+                        {/foreach}
+                        {ifset $linksz['MUS'][$poj]}
+                        <tr>
+                                <td colspan="5">{input MUS-{$poj}-DG-add}</td>
+                        </tr>
+                        {else}
+                        <tr>
+                                <td colspan="5">{input MUS-{$poj}-DG-add}</td>
+                        </tr>
+                        {/ifset}
+                        </table>
+                    {/foreach}
 
                     <table class="lekovnice" style="position: sticky; bottom: 0; left: 0; width: 100%; background: #225e9d;">
                         <td style="width: 50%;"><a n:href="Zjednodusene:default" class="btn btn-danger btn-block">Zpět</a></td> 
@@ -70,19 +106,4 @@
          <p n:class="alert, 'alert-danger'">Nemáte dostatečná práva!!</p>
       {/if}    
     </div>
-{/block}
-
-{block scripts}
-{include #parent}
-<script type="text/javascript">
-	$($("[data-autocomplete-dg]")).autocomplete({
-		source: {link Dgskup!}, 
-		minLength: 1
-	});
-</script>
-<script type="text/javascript" n:syntax='off'>
-$(function () {
-  $('[data-toggle="tooltip"]').tooltip()
-})
-</script>
 {/block}
