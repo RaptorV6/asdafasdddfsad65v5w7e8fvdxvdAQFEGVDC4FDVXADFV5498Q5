@@ -69,29 +69,62 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
     return $grid;
 }
 
-    public function createComponentDGDataGrid(string $name): Multiplier{
-        return new Multiplier(function ($ID_LEKY) {
+  public function createComponentDGDataGrid(string $name): Multiplier{
+    return new Multiplier(function ($ID_LEKY) {
 
-            $grid = new DataGrid(null, $ID_LEKY);
-            $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+        $grid = new DataGrid(null, $ID_LEKY);
+        $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+        
+        // ✅ OPRAVENÁ logika s existujícími metodami:
+        $lekInfo = $this->BaseModel->getLekByIdOrName($ID_LEKY);
+        
+        if (!$lekInfo) {
+            $grid->setDataSource([]);
+        } else {
+            // Zkontroluj počet variant
+            $variantCount = $this->BaseModel->getVariantCount($lekInfo->NAZ, $lekInfo->ORGANIZACE);
             
-            $grid->setDataSource($this->BaseModel->getDataSource_DG_WithName($ID_LEKY));
-            
-            $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
-                $this->BaseModel->set_pojistovny_dg($values);
-                $this->flashMessage("Vkládání do databáze proběhlo v pořádku", 'success');
-                $this->redirect('this');
-            };
-            
-            $grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
-                $this->BaseModel->set_pojistovny_dg_edit($values);
-                $this->flashMessage("Editace proběhla v pořádku", 'success');
-                $this->redirect('this');
-            };
-            
-            return $grid;
-        });
+            if ($variantCount > 1) {
+                // Více variant - zobraz DG pro všechny varianty
+                $grid->setDataSource($this->BaseModel->getDataSource_DG_ByVariants($lekInfo->NAZ, $lekInfo->ORGANIZACE));
+            } else {
+                // Jedna varianta - normální detail
+                $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
+            }
+        }
+        
+        $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
+            $this->BaseModel->set_pojistovny_dg($values);
+            $this->flashMessage("Vkládání do databáze proběhlo v pořádku", 'success');
+            $this->redirect('this');
+        };
+        
+        $grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
+            $this->BaseModel->set_pojistovny_dg_edit($values);
+            $this->flashMessage("Editace proběhla v pořádku", 'success');
+            $this->redirect('this');
+        };
+        
+        return $grid;
+    });
+}
+
+
+    public function actionShowDetail($ID_LEKY) {
+    $this->template->ID_LEKY = $ID_LEKY;
+    $this->template->nadpis = "Detail diagnostických skupin";
+    
+    $lekInfo = $this->BaseModel->getLekByIdOrName($ID_LEKY);
+    
+    if ($lekInfo) {
+        $variantCount = $this->BaseModel->getVariantCount($lekInfo->NAZ, $lekInfo->ORGANIZACE);
+        $this->template->variantCount = $variantCount;
+        $this->template->lekInfo = $lekInfo;
+    } else {
+        $this->template->variantCount = 0;
+        $this->template->lekInfo = null;
     }
+}
 
     protected function createComponentZjednoduseneForm(string $name) {
         $form = new \Nette\Application\UI\Form($this, $name);

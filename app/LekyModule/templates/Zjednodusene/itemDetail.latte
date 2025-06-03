@@ -1,6 +1,16 @@
-{* app/LekyModule/templates/Zjednodusene/itemDetail.latte *}
 {block detail}
     <div id="content">
-            {$presenter->getComponent('dGDataGrid-'.$item->ID_LEKY)->render()} 
+        {* Zobrazení informace o variantách *}
+        {php $lekInfo = $presenter->BaseModel->getLekByIdOrName($item->ID_LEKY)}
+        {php $variantCount = $presenter->BaseModel->db->select('COUNT(*)')->from('AKESO_LEKY_VIEW')->where('NAZ = ? AND ORGANIZACE = ?', $lekInfo->NAZ, $lekInfo->ORGANIZACE)->fetchSingle()}
+        
+        {if $variantCount > 1}
+            <div class="alert alert-info">
+                <strong>Zobrazeny diagnostické skupiny pro všechny varianty léku "{$lekInfo->NAZ}"</strong><br>
+                <small>Nalezeno celkem {$variantCount} variant tohoto léku</small>
+            </div>
+        {/if}
+        
+        {$presenter->getComponent('dGDataGrid-'.$item->ID_LEKY)->render()} 
     </div>
 {/block}

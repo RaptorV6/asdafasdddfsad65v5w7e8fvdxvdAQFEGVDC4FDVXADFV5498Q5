@@ -83,14 +83,10 @@ $grid->addColumnText('NAZ', 'Název')
         }
 
         // ✅ DG DETAIL (zachováno stejné jako v původním)
-        $grid->setItemsDetail(true, "ID_LEKY")
-             ->setClass("btn btn-primary btn-sm ajax")
-             ->setTitle("Diagnostické skupiny")
-             ->setText("Detail (Info)")
-             ->setIcon("arrow-down")
-             ->setTemplateParameters(["ID_LEKY"=>"ID_LEKY"])
-             ->setType("template")
-             ->setTemplate(__DIR__."/../templates/Zjednodusene/itemDetail.latte");
+$grid->addAction('detail', 'Detail (Info)', 'showDetail')
+     ->setClass("btn btn-primary btn-sm")
+     ->setIcon("arrow-down")
+     ->setTitle("Diagnostické skupiny");
 
         // ✅ HROMADNÉ AKCE (zachováno stejné jako v původním)
         if (($prava == '9' || $prava == '2') && $poj == 1) {

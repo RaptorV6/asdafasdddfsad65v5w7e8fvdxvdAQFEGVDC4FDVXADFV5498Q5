@@ -28,7 +28,56 @@ class LekyZjednoduseny extends \App\Model\AModel {
         return $select;
     }
 
-    // ✅ OPRAVA - GLOBÁLNÍ VYHLEDÁVÁNÍ TAKÉ FLUENT
+    public function getDataSource_DG(string $id_leku) {
+    return $this->db->select('ROW_NUMBER() OVER (ORDER BY ID_LEKY + 1) AS ID,[ID_LEKY],[ORGANIZACE],[POJISTOVNA],[DG_NAZEV],[VILP], CONVERT(nvarchar(20), DG_PLATNOST_OD, 104) as DG_PLATNOST_OD, CONVERT(nvarchar(20), DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
+                    ->from(self::POJISTOVNY_DG)->as('dg1')
+                    ->where('ID_LEKY = %s and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $id_leku)
+                    ->fetchAll();
+}
+
+public function getDataSource_DG_ByVariants(string $nazev, string $organizace) {
+    // Najdi všechna ID_LEKY pro daný název a organizaci
+    $lekyIds = $this->db->select('ID_LEKY')
+                        ->from(self::LEKY_VIEW)
+                        ->where('NAZ = %s AND ORGANIZACE = %s', $nazev, $organizace)
+                        ->fetchPairs(null, 'ID_LEKY');
+    
+    if (empty($lekyIds)) {
+        return [];
+    }
+    
+    // Vrať DG data pro všechny varianty
+    return $this->db->select('ROW_NUMBER() OVER (ORDER BY ID_LEKY + 1) AS ID,[ID_LEKY],[ORGANIZACE],[POJISTOVNA],[DG_NAZEV],[VILP], CONVERT(nvarchar(20), DG_PLATNOST_OD, 104) as DG_PLATNOST_OD, CONVERT(nvarchar(20), DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
+                    ->from(self::POJISTOVNY_DG)->as('dg1')
+                    ->where('ID_LEKY IN %in and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $lekyIds)
+                    ->fetchAll();
+}
+public function getLekByIdOrName(string $id_leku) {
+    // ✅ FINÁLNÍ řešení - raw SQL bez OFFSET:
+    return $this->db->query('
+        SELECT NAZ, ORGANIZACE, ID_LEKY 
+        FROM %n 
+        WHERE ID_LEKY = %s', 
+        self::LEKY_VIEW, 
+        $id_leku
+    )->fetch();
+}
+
+public function getVariantCount(string $nazev, string $organizace) {
+    // ✅ FINÁLNÍ řešení - raw SQL bez OFFSET:
+    $result = $this->db->query('
+        SELECT COUNT(*) as variant_count 
+        FROM %n 
+        WHERE NAZ = %s AND ORGANIZACE = %s', 
+        self::LEKY_VIEW, 
+        $nazev, 
+        $organizace
+    )->fetchSingle();
+    
+    return $result ?: 0;
+}
+
+
     public function getDataSourceWithGlobalSearch($searchTerm, $organizace = null, $history = null) {
         $select = $this->db->select("*")->from(self::LEKY_VIEW);
 
@@ -98,6 +147,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
     public function getDataSource($organizace = null, $history = null) {
         return $this->getDataSourceZjednodusene($organizace, $history);
     }
+    
 
     public function set_pojistovny_dg($values){ return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); }
     public function set_pojistovny_dg_edit($values){ return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); }
@@ -150,4 +200,5 @@ class LekyZjednoduseny extends \App\Model\AModel {
         }
         return $select;
     }
+    
 }
