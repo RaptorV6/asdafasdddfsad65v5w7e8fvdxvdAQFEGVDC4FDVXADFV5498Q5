@@ -101,4 +101,53 @@ class LekyZjednoduseny extends \App\Model\AModel {
 
     public function set_pojistovny_dg($values){ return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); }
     public function set_pojistovny_dg_edit($values){ return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); }
+
+    public function getDataSourceGrouped($organizace = null, $history = null) {
+        $select = $this->db->select("
+            CASE
+                WHEN COUNT(*) > 1
+                THEN NAZ + ' (' + CAST(COUNT(*) AS VARCHAR) + 'x)'
+                ELSE NAZ
+            END as NAZ,
+            ORGANIZACE,
+            MAX(POZNAMKA) as POZNAMKA,
+            MAX(UCINNA_LATKA) as UCINNA_LATKA,
+            MAX(BIOSIMOLAR) as BIOSIMOLAR,
+            MAX(ATC) as ATC,
+            COUNT(*) as VARIANT_COUNT,
+            MIN(ID_LEKY) as ID_LEKY,
+            
+            -- Stavy pojišťoven
+            MAX([111_STAV]) as [111_STAV],
+            MAX([111_NASMLOUVANO_OD]) as [111_NASMLOUVANO_OD],
+            MAX([111_POZNAMKA]) as [111_POZNAMKA],
+            MAX(poj111_BARVA) as poj111_BARVA,
+            
+            MAX([201_STAV]) as [201_STAV],
+            MAX([201_NASMLOUVANO_OD]) as [201_NASMLOUVANO_OD],
+            MAX([201_POZNAMKA]) as [201_POZNAMKA],
+            MAX(poj201_BARVA) as poj201_BARVA,
+            
+            MAX([205_STAV]) as [205_STAV],
+            MAX(poj205_BARVA) as poj205_BARVA,
+            MAX([207_STAV]) as [207_STAV],
+            MAX(poj207_BARVA) as poj207_BARVA,
+            MAX([209_STAV]) as [209_STAV],
+            MAX(poj209_BARVA) as poj209_BARVA,
+            MAX([211_STAV]) as [211_STAV],
+            MAX(poj211_BARVA) as poj211_BARVA,
+            MAX([213_STAV]) as [213_STAV],
+            MAX(poj213_BARVA) as poj213_BARVA
+            
+        ")->from(self::LEKY_VIEW)
+          ->groupBy("NAZ, ORGANIZACE");
+
+        if ($organizace) {
+            $select->where("ORGANIZACE = %s", $organizace);
+        }
+        if (!$history) {
+            $select->where("AKORD = 0");
+        }
+        return $select;
+    }
 }

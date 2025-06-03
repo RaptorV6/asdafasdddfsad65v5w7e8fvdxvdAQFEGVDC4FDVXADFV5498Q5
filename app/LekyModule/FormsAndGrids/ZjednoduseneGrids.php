@@ -21,16 +21,23 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         
         $grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
 
-        // ✅ ZJEDNODUŠENÉ SLOUPCE (pouze požadované)
-        $grid->addColumnText('ORGANIZACE', 'Organizace')
-             ->setSortable()
-             ->setFilterMultiSelect(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
-             ->addAttribute('class', 'multiselect');
+    
+       $grid->addColumnText('ORGANIZACE', 'Organizace')
+     ->setSortable()
+     ->setDefaultHide()  
+     ->setFilterMultiSelect(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
+     ->addAttribute('class', 'multiselect');
 
-        $grid->addColumnText('NAZ', 'Název')
-             ->setSortable()
-             ->setFilterText()
-             ->setSplitWordsSearch(true);
+// V setZjednoduseneGrid() metodě:
+
+$grid->addColumnText('NAZ', 'Název')
+     ->setSortable()
+     ->setRenderer(function ($item) {
+         // Stejný pattern jako u stavů
+         return $item->NAZ; // zatím jednoduše
+     })
+     ->setFilterText()
+     ->setSplitWordsSearch(true);
 
         $grid->addColumnText('POZNAMKA', 'Poznámka pro všechny ZP')
              ->setSortable()
@@ -104,7 +111,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  ->setAttribute("style", "display:none;");
         }
 
-        // ✅ ZKOPÍROVÁNO Z OFICIÁLNÍ VERZE - PŘESNĚ STEJNÉ
+
         $container = $grid->getComponent("filter-group_action");
         /** @var \Nette\Forms\Container $container */
         
@@ -115,30 +122,39 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                   ->getControlPrototype()
                   ->setAttribute("onchange", "$(this).parents('form').submit();");
 
-        // ✅ ZKOPÍROVÁNO Z OFICIÁLNÍ VERZE
-        $container->getForm()
-        ->onSubmit[] = function ($form) use ($grid) {
-            $values = $form->getValues();
-            $values->group_action->lekarnaVyber = $values->group_action->lekarnaVyber ?? null;
-            $values->group_action->histori = $values->group_action->histori ?? null;
-            if ($values->group_action->lekarnaVyber) {
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber));
-                $grid->getSessionData()->lekarnaVyber = $values->group_action->lekarnaVyber;
-            } elseif (!$values->group_action->lekarnaVyber) {
-                unset($grid->getSessionData()->lekarnaVyber);
-                $values->group_action->lekarnaVyber = NULL;
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber));
-            }
-            if ($values->group_action->histori) {
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber, $values->group_action->histori));
-                $grid->getSessionData()->histori = $values->group_action->histori;
-            } elseif (!$values->group_action->lekarnaVyber) {
-                unset($grid->getSessionData()->histori, $values->group_action->histori);
-                $values->group_action->histori = NULL;
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSource($values->group_action->lekarnaVyber, $values->group_action->histori));
-            }
-            $grid->reload();
-        };
+        $container->addCheckbox("group_by_name", "Seskupit podle názvu: ")
+                  ->setDefaultValue(true) // ✅ Default zaškrtnuto
+                  ->setHtmlId('group_by_name')
+                  ->setHtmlAttribute("class", "checkbox")
+                  ->getControlPrototype()
+                  ->setAttribute("onchange", "$(this).parents('form').submit();");
+
+        $container->getForm()->onSubmit[] = function ($form) use ($grid) {
+    $values = $form->getValues();
+    
+    // Nastavit defaulty pro existující pole
+    $values->group_action->histori = $values->group_action->histori ?? null;
+    $values->group_action->group_by_name = $values->group_action->group_by_name ?? null;
+    
+    // Logika pro group_by_name
+    if ($values->group_action->group_by_name) {
+        $grid->setDataSource($grid->presenter->BaseModel->getDataSourceGrouped(null, $values->group_action->histori));
+        $grid->getSessionData()->group_by_name = true;
+    } else {
+        $grid->setDataSource($grid->presenter->BaseModel->getDataSourceZjednodusene(null, $values->group_action->histori));
+        unset($grid->getSessionData()->group_by_name);
+    }
+    
+    // Zachovat původní logiku pro histori
+    if ($values->group_action->histori) {
+        $grid->getSessionData()->histori = $values->group_action->histori;
+    } else {
+        unset($grid->getSessionData()->histori);
+        $values->group_action->histori = NULL;
+    }
+    
+    $grid->reload();
+};
 
         // ✅ AKCE TLAČÍTKA (zachováno stejné jako v původním)
         if ($prava == '9' || $prava == '2') {
