@@ -1,6 +1,3 @@
-{* app/LekyModule/templates/Zjednodusene/edit.latte *}
-{layout '../@layout.latte'}
-
 {block content}
     <div id="content">
       {if $prava == '9' || $prava == '2'}  
@@ -36,11 +33,16 @@
                         <td>{label ORGANIZACE /}</td>
                         <td>{input ORGANIZACE}</td>
                       </tr>
+                      {* ✅ PŘIDAT MULTISELECT PRO POJIŠŤOVNY *}
+                      <tr>
+                        <td>{label POJ /}</td>
+                        <td>{input POJ}</td>
+                      </tr>
                     </table>
 
-                    {* ✅ PŘESNĚ JAKO OFICIÁLNÍ - SEKCE PRO KAŽDOU POJIŠŤOVNU *}
+                    {* ✅ PŘIDAT ID PRO TOGGLE - STEJNĚ JAKO V OFICIÁLNÍ *}
                     {foreach ['111', '201', '205', '207', '209', '211', '213'] as $poj}
-                        <table class="lekovnice">
+                        <table class="lekovnice" id="p{$poj}_pojistovna">
                           <tr>
                             <th colspan="5">Organizace: MUS zdravotní pojištovna {$poj}</th>
                           </tr>

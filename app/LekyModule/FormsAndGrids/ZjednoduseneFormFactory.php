@@ -16,40 +16,68 @@ class ZjednoduseneFormFactory {
     public function __construct(User $user, \Dibi\Connection $db, Array $parameters) {
         // constructor
     }
+public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
+    
+    $form->addHidden('ID_LEKY', 'id');
 
-    public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
-        
-        $form->addHidden('ID_LEKY', 'id');
+    $form->addText('NAZ', 'Název')
+         ->setRequired('Musí být vyplněný "%label"')
+         ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 70);
 
-        $form->addText('NAZ', 'Název')
-             ->setRequired('Musí být vyplněný "%label"')
-             ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 70);
+    $form->addTextArea('POZNAMKA', 'Poznámka pro všechny ZP')
+         ->setNullable();
 
-        $form->addTextArea('POZNAMKA', 'Poznámka pro všechny ZP')
-             ->setNullable();
+    $form->addTextArea('UCINNA_LATKA', 'Učinná látka')
+         ->setNullable();
 
-        $form->addTextArea('UCINNA_LATKA', 'Učinná látka')
-             ->setNullable();
+    $form->addTextArea('BIOSIMOLAR', 'Biosimilar')
+         ->setNullable();
 
-        $form->addTextArea('BIOSIMOLAR', 'Biosimilar')
-             ->setNullable();
+    $form->addText('ATC', 'ATC skupina')
+         ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
+         ->setNullable();
 
-        $form->addText('ATC', 'ATC skupina')
-             ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
-             ->setNullable();
+    $form->addMultiSelect('ORGANIZACE', 'Organizace')
+         ->setHtmlAttribute('class', 'multiselect')
+         ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
+         ->setRequired('Musí být vybrána alespoň jedna organizace');
 
-        $form->addMultiSelect('ORGANIZACE', 'Organizace')
-             ->setHtmlAttribute('class', 'multiselect')
-             ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
-             ->setRequired('Musí být vybrána alespoň jedna organizace');
+    // ✅ PŘIDAT MULTISELECT PRO POJIŠŤOVNY - STEJNĚ JAKO V OFICIÁLNÍ
+    $form->addMultiSelect('POJ', 'Pojišťovny')
+         ->setHtmlAttribute('class', 'multiselect')
+         ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY)
+         ->addCondition(Form::EQUAL, '')
+         ->toggle('p0_pojistovna') // všechno je pro pojišťovny
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('201', '205', '207', '209', '211', '213'))
+         ->toggle('p111_pojistovna')
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('111', '205', '207', '209', '211', '213'))
+         ->toggle('p201_pojistovna')
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('111', '201', '207', '209', '211', '213'))
+         ->toggle('p205_pojistovna')
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('111', '201', '205', '209', '211', '213'))
+         ->toggle('p207_pojistovna')
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('111', '201', '205', '207', '211', '213'))
+         ->toggle('p209_pojistovna')
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('111', '201', '205', '207', '209', '213'))
+         ->toggle('p211_pojistovna')
+         ->endCondition()
+         ->addCondition(Form::IS_NOT_IN, array('111', '201', '205', '207', '209', '211'))
+         ->toggle('p213_pojistovna')
+         ->endCondition();
 
-        foreach (['MUS'] as $organizace) {
-            $contOrg = $form->addContainer($organizace);
-            foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojistovna) {
-                $this->setPojistovnaContainer($contOrg->addContainer($pojistovna), $organizace, $pojistovna);
-            }
+    foreach (['MUS'] as $organizace) {
+        $contOrg = $form->addContainer($organizace);
+        foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojistovna) {
+            $this->setPojistovnaContainer($contOrg->addContainer($pojistovna), $organizace, $pojistovna);
         }
     }
+}
 
     private function setPojistovnaContainer(Container $container, $org, $poj) {
 
