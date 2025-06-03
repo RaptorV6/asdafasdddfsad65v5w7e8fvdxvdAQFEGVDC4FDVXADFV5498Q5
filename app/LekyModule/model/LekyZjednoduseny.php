@@ -12,7 +12,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
           LEKY = "LEKY",
           AKESO_LEKY = "AKESO_LEKY";
 
-    // ✅ OPRAVA - VRACÍ FLUENT MÍSTO POLE
+    // ✅ ZÁKLADNÍ data source - NEGROUPOVANÁ pro detail
     public function getDataSourceZjednodusene($organizace = null, $history = null) {
         $select = $this->db->select("*")->from(self::LEKY_VIEW);
         
@@ -24,78 +24,86 @@ class LekyZjednoduseny extends \App\Model\AModel {
             $select->where("AKORD = 0");
         }
 
-        // ✅ VRÁTIT FLUENT OBJEKT PRO GRID
         return $select;
     }
 
-    public function getDataSource_DG(string $id_leku) {
-    return $this->db->select('ROW_NUMBER() OVER (ORDER BY ID_LEKY + 1) AS ID,[ID_LEKY],[ORGANIZACE],[POJISTOVNA],[DG_NAZEV],[VILP], CONVERT(nvarchar(20), DG_PLATNOST_OD, 104) as DG_PLATNOST_OD, CONVERT(nvarchar(20), DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
-                    ->from(self::POJISTOVNY_DG)->as('dg1')
-                    ->where('ID_LEKY = %s and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $id_leku)
-                    ->fetchAll();
-}
-
-public function getDataSource_DG_ByVariants(string $nazev, string $organizace) {
-    // Najdi všechna ID_LEKY pro daný název a organizaci
-    $lekyIds = $this->db->select('ID_LEKY')
-                        ->from(self::LEKY_VIEW)
-                        ->where('NAZ = %s AND ORGANIZACE = %s', $nazev, $organizace)
-                        ->fetchPairs(null, 'ID_LEKY');
-    
-    if (empty($lekyIds)) {
-        return [];
+    // ✅ GRUPPOVANÁ data source - jen pro hlavní seznam
+    public function getDataSourceGrouped($organizace = null, $history = null) {
+        $select = $this->db->query('
+            SELECT 
+                CASE
+                    WHEN COUNT(*) > 1
+                    THEN NAZ + \' (\' + CAST(COUNT(*) AS VARCHAR) + \'x)\'
+                    ELSE NAZ
+                END as NAZ,
+                ORGANIZACE,
+                MAX(POZNAMKA) as POZNAMKA,
+                MAX(UCINNA_LATKA) as UCINNA_LATKA,
+                MAX(BIOSIMOLAR) as BIOSIMOLAR,
+                MAX(ATC) as ATC,
+                COUNT(*) as VARIANT_COUNT,
+                MIN(ID_LEKY) as ID_LEKY,
+                
+                MAX([111_STAV]) as [111_STAV],
+                MAX([111_NASMLOUVANO_OD]) as [111_NASMLOUVANO_OD],
+                MAX([111_POZNAMKA]) as [111_POZNAMKA],
+                MAX(poj111_BARVA) as poj111_BARVA,
+                
+                MAX([201_STAV]) as [201_STAV],
+                MAX([201_NASMLOUVANO_OD]) as [201_NASMLOUVANO_OD],
+                MAX([201_POZNAMKA]) as [201_POZNAMKA],
+                MAX(poj201_BARVA) as poj201_BARVA,
+                
+                MAX([205_STAV]) as [205_STAV],
+                MAX(poj205_BARVA) as poj205_BARVA,
+                MAX([207_STAV]) as [207_STAV],
+                MAX(poj207_BARVA) as poj207_BARVA,
+                MAX([209_STAV]) as [209_STAV],
+                MAX(poj209_BARVA) as poj209_BARVA,
+                MAX([211_STAV]) as [211_STAV],
+                MAX(poj211_BARVA) as poj211_BARVA,
+                MAX([213_STAV]) as [213_STAV],
+                MAX(poj213_BARVA) as poj213_BARVA
+                
+            FROM %n 
+            WHERE AKORD = 0 %if', self::LEKY_VIEW, $organizace, 'AND ORGANIZACE = %s %end', $organizace, '
+            GROUP BY NAZ, ORGANIZACE
+        ');
+        
+        return $select->fetchAll();
     }
+
+    // ✅ DG data pro detail
+public function getDataSource_DG($id_leku, $organizace_filter = null) {
+    $where_organizace = $organizace_filter ? 'AND p.ORGANIZACE = \'' . $organizace_filter . '\'' : '';
     
-    // Vrať DG data pro všechny varianty
-    return $this->db->select('ROW_NUMBER() OVER (ORDER BY ID_LEKY + 1) AS ID,[ID_LEKY],[ORGANIZACE],[POJISTOVNA],[DG_NAZEV],[VILP], CONVERT(nvarchar(20), DG_PLATNOST_OD, 104) as DG_PLATNOST_OD, CONVERT(nvarchar(20), DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
-                    ->from(self::POJISTOVNY_DG)->as('dg1')
-                    ->where('ID_LEKY IN %in and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $lekyIds)
-                    ->fetchAll();
-}
-public function getLekByIdOrName(string $id_leku) {
-    // ✅ FINÁLNÍ řešení - raw SQL bez OFFSET:
     return $this->db->query('
-        SELECT NAZ, ORGANIZACE, ID_LEKY 
-        FROM %n 
-        WHERE ID_LEKY = %s', 
-        self::LEKY_VIEW, 
-        $id_leku
-    )->fetch();
+        SELECT 
+            ROW_NUMBER() OVER (ORDER BY p.ID_LEKY) AS ID,
+            p.ID_LEKY,
+            lek.NAZ as LEK_NAZEV,
+            p.ORGANIZACE,
+            p.POJISTOVNA,
+            dg.DG_NAZEV,
+            dg.VILP,
+            CONVERT(nvarchar(20), dg.DG_PLATNOST_OD, 104) as DG_PLATNOST_OD,
+            CONVERT(nvarchar(20), dg.DG_PLATNOST_DO, 104) as DG_PLATNOST_DO,
+            CASE WHEN p.POJISTOVNA = 111 THEN p.RL ELSE NULL END as [111_RL],
+            CASE WHEN p.POJISTOVNA = 111 THEN p.POZNAMKA ELSE NULL END as [111_POZNAMKA]
+        FROM %n p
+        LEFT JOIN %n dg ON p.ID_LEKY = dg.ID_LEKY 
+            AND p.ORGANIZACE = dg.ORGANIZACE 
+            AND p.POJISTOVNA = dg.POJISTOVNA
+        LEFT JOIN %n lek ON p.ID_LEKY = lek.ID_LEKY AND p.ORGANIZACE = lek.ORGANIZACE
+        WHERE p.ID_LEKY = %s
+            AND (dg.DG_PLATNOST_DO >= GETDATE() OR dg.DG_PLATNOST_DO IS NULL)
+            AND dg.DG_NAZEV IS NOT NULL
+            ' . $where_organizace . '
+    ', self::POJISTOVNY, self::POJISTOVNY_DG, self::LEKY_VIEW, $id_leku)->fetchAll();
 }
-
-public function getVariantCount(string $nazev, string $organizace) {
-    // ✅ FINÁLNÍ řešení - raw SQL bez OFFSET:
-    $result = $this->db->query('
-        SELECT COUNT(*) as variant_count 
-        FROM %n 
-        WHERE NAZ = %s AND ORGANIZACE = %s', 
-        self::LEKY_VIEW, 
-        $nazev, 
-        $organizace
-    )->fetchSingle();
-    
-    return $result ?: 0;
-}
-
-
-    public function getDataSourceWithGlobalSearch($searchTerm, $organizace = null, $history = null) {
-        $select = $this->db->select("*")->from(self::LEKY_VIEW);
-
-        if ($searchTerm) {
-            $select->where("(NAZ LIKE %~like~ OR ATC LIKE %~like~ OR UCINNA_LATKA LIKE %~like~ OR BIOSIMOLAR LIKE %~like~)",
-                        $searchTerm, $searchTerm, $searchTerm, $searchTerm);
-        }
-
-        if ($organizace) {
-            $select->where("ORGANIZACE = %s", $organizace);
-        }
-
-        if (!$history) {
-            $select->where("AKORD = 0");
-        }
-
-        // ✅ VRÁTIT FLUENT OBJEKT
-        return $select;
+    // ✅ KOMPATIBILITA
+    public function getDataSource($organizace = null, $history = null) {
+        return $this->getDataSourceZjednodusene($organizace, $history);
     }
 
     public function getLeky($id) {
@@ -143,62 +151,11 @@ public function getVariantCount(string $nazev, string $organizace) {
         return $this->db->query("MERGE INTO " . self::POJISTOVNY_DG . " as poj USING (SELECT ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s) AS spoj ON poj.ID_LEKY = spoj.ID_LEKY AND poj.ORGANIZACE = spoj.ORGANIZACE AND poj.POJISTOVNA = spoj.POJISTOVNA AND poj.DG_NAZEV = spoj.DG_NAZEV WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s, VILP = %b, DG_PLATNOST_OD = %d, DG_PLATNOST_DO = %d WHEN NOT MATCHED THEN INSERT (ID_LEKY, ORGANIZACE, POJISTOVNA, DG_NAZEV, VILP, DG_PLATNOST_OD, DG_PLATNOST_DO) VALUES(%s,%s,%i,%s,%b,%d,%d);", $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO);
     }
 
-    // ✅ KOMPATIBILITA
-    public function getDataSource($organizace = null, $history = null) {
-        return $this->getDataSourceZjednodusene($organizace, $history);
+    public function set_pojistovny_dg($values){ 
+        return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
     }
     
-
-    public function set_pojistovny_dg($values){ return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); }
-    public function set_pojistovny_dg_edit($values){ return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); }
-
-    public function getDataSourceGrouped($organizace = null, $history = null) {
-        $select = $this->db->select("
-            CASE
-                WHEN COUNT(*) > 1
-                THEN NAZ + ' (' + CAST(COUNT(*) AS VARCHAR) + 'x)'
-                ELSE NAZ
-            END as NAZ,
-            ORGANIZACE,
-            MAX(POZNAMKA) as POZNAMKA,
-            MAX(UCINNA_LATKA) as UCINNA_LATKA,
-            MAX(BIOSIMOLAR) as BIOSIMOLAR,
-            MAX(ATC) as ATC,
-            COUNT(*) as VARIANT_COUNT,
-            MIN(ID_LEKY) as ID_LEKY,
-            
-            -- Stavy pojišťoven
-            MAX([111_STAV]) as [111_STAV],
-            MAX([111_NASMLOUVANO_OD]) as [111_NASMLOUVANO_OD],
-            MAX([111_POZNAMKA]) as [111_POZNAMKA],
-            MAX(poj111_BARVA) as poj111_BARVA,
-            
-            MAX([201_STAV]) as [201_STAV],
-            MAX([201_NASMLOUVANO_OD]) as [201_NASMLOUVANO_OD],
-            MAX([201_POZNAMKA]) as [201_POZNAMKA],
-            MAX(poj201_BARVA) as poj201_BARVA,
-            
-            MAX([205_STAV]) as [205_STAV],
-            MAX(poj205_BARVA) as poj205_BARVA,
-            MAX([207_STAV]) as [207_STAV],
-            MAX(poj207_BARVA) as poj207_BARVA,
-            MAX([209_STAV]) as [209_STAV],
-            MAX(poj209_BARVA) as poj209_BARVA,
-            MAX([211_STAV]) as [211_STAV],
-            MAX(poj211_BARVA) as poj211_BARVA,
-            MAX([213_STAV]) as [213_STAV],
-            MAX(poj213_BARVA) as poj213_BARVA
-            
-        ")->from(self::LEKY_VIEW)
-          ->groupBy("NAZ, ORGANIZACE");
-
-        if ($organizace) {
-            $select->where("ORGANIZACE = %s", $organizace);
-        }
-        if (!$history) {
-            $select->where("AKORD = 0");
-        }
-        return $select;
+    public function set_pojistovny_dg_edit($values){ 
+        return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); 
     }
-    
 }
