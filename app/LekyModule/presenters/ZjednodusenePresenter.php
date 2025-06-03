@@ -50,9 +50,24 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         }
 
         $this->GridFactory->setZjednoduseneGrid($grid, $this->user->getIdentity()->prava, $this->user->getIdentity()->modul_poj, $defaultHodnoty);
-        $grid->setDataSource($this->BaseModel->getDataSourceZjednodusene($grid->getSessionData()->lekarnaVyber ?? null, $grid->getSessionData()->histori ?? null));
-        return $grid;
+    
+    // ✅ KLÍČOVÁ OPRAVA - nastavit správný default data source
+    $groupByName = $grid->getSessionData('group_by_name') ?? true; // Default true
+    
+    if ($groupByName) {
+        $grid->setDataSource($this->BaseModel->getDataSourceGrouped(
+            $grid->getSessionData('lekarnaVyber') ?? null, 
+            $grid->getSessionData('histori') ?? null
+        ));
+    } else {
+        $grid->setDataSource($this->BaseModel->getDataSourceZjednodusene(
+            $grid->getSessionData('lekarnaVyber') ?? null, 
+            $grid->getSessionData('histori') ?? null
+        ));
     }
+    
+    return $grid;
+}
 
     public function createComponentDGDataGrid(string $name): Multiplier{
         return new Multiplier(function ($ID_LEKY) {
@@ -83,7 +98,7 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         
         $lek = $this->BaseModel->getLeky($this->getParameter('ID_LEKY'));
 
-        if (isset($lek->ORGANIZACE)) {
+        if ($lek && isset($lek->ORGANIZACE)) { // ✅ Ošetření přístupu
             $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
         }
         $lek['POJ'] = [];
@@ -117,7 +132,7 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         $form->onError[] = function ($form) {
             \App\LekyModule\Presenters\LekyPresenter::processFormErrors($form, $this);
         };
-        if (!empty($lek->ORGANIZACE)) {
+        if ($lek && !empty($lek->ORGANIZACE)) { // ✅ Ošetření přístupu
             $lek->ORGANIZACE = array_filter($lek->ORGANIZACE);
         }
         $form->setDefaults($lek);
