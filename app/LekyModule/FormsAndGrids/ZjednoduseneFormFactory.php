@@ -1,5 +1,4 @@
 <?php
-// app/LekyModule/FormsAndGrids/ZjednoduseneFormFactory.php
 
 declare(strict_types=1);
 
@@ -42,12 +41,12 @@ public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
          ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
          ->setRequired('Musí být vybrána alespoň jedna organizace');
 
-    // ✅ PŘIDAT MULTISELECT PRO POJIŠŤOVNY - STEJNĚ JAKO V OFICIÁLNÍ
+   
     $form->addMultiSelect('POJ', 'Pojišťovny')
          ->setHtmlAttribute('class', 'multiselect')
          ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY)
          ->addCondition(Form::EQUAL, '')
-         ->toggle('p0_pojistovna') // všechno je pro pojišťovny
+         ->toggle('p0_pojistovna') 
          ->endCondition()
          ->addCondition(Form::IS_NOT_IN, array('201', '205', '207', '209', '211', '213'))
          ->toggle('p111_pojistovna')

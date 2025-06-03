@@ -72,10 +72,7 @@ public function createComponentDGDataGrid(string $name): Multiplier{
         $grid = new DataGrid(null, $ID_LEKY);
         $this->GridFactory->setDGGrid($grid, $ID_LEKY);
         
-        // ❌ ŠPATNĚ:
-        // $lekInfo = $this->BaseModel->db->query(...)
-        
-        // ✅ SPRÁVNĚ - použij metodu modelu:
+  
         $lekInfo = $this->BaseModel->getLeky($ID_LEKY);
         $organizaceFilter = $lekInfo ? $lekInfo->ORGANIZACE : null;
         
@@ -97,7 +94,7 @@ public function createComponentDGDataGrid(string $name): Multiplier{
     });
 }
 
-    // ✅ PŘIDAT CHYBĚJÍCÍ METODU:
+
     protected function createComponentZjednoduseneForm(string $name) {
         $form = new \Nette\Application\UI\Form($this, $name);
         
@@ -194,7 +191,7 @@ public function createComponentDGDataGrid(string $name): Multiplier{
         $this->redirectUrl('https://prehledy.sukl.cz/prehled_leciv.html#/leciva/' . $ID_LEKY);
     }
 
-    // ✅ PŘIDAT CHYBĚJÍCÍ METODU:
+
     public function zjednoduseneFormSucceeded($form) {
         $values = $form->getValues();
         
@@ -218,7 +215,6 @@ public function createComponentDGDataGrid(string $name): Multiplier{
         $this->sendResponse(new \Nette\Application\Responses\JsonResponse($fristHalfItems));
     }
 
-    // ✅ PŘIDAT další chybějící metody:
     protected function createComponentHromadForm(string $name) {
         $form = new \Nette\Application\UI\Form($this, $name);
         $form->addHidden('ID')

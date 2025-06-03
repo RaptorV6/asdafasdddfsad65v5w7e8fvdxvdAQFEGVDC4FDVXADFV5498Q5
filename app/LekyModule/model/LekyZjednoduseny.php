@@ -1,5 +1,4 @@
 <?php
-// app/LekyModule/model/LekyZjednoduseny.php
 
 namespace App\LekyModule\Model;
 
@@ -12,7 +11,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
           LEKY = "LEKY",
           AKESO_LEKY = "AKESO_LEKY";
 
-    // ✅ ZÁKLADNÍ data source - NEGROUPOVANÁ pro detail
+
     public function getDataSourceZjednodusene($organizace = null, $history = null) {
         $select = $this->db->select("*")->from(self::LEKY_VIEW);
         
@@ -27,7 +26,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
         return $select;
     }
 
-    // ✅ GRUPPOVANÁ data source - jen pro hlavní seznam
+ 
     public function getDataSourceGrouped($organizace = null, $history = null) {
         $select = $this->db->query('
             SELECT 
@@ -73,7 +72,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
         return $select->fetchAll();
     }
 
-    // ✅ DG data pro detail
+
 public function getDataSource_DG($id_leku, $organizace_filter = null) {
     $where_organizace = $organizace_filter ? 'AND p.ORGANIZACE = \'' . $organizace_filter . '\'' : '';
     
@@ -101,7 +100,7 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
             ' . $where_organizace . '
     ', self::POJISTOVNY, self::POJISTOVNY_DG, self::LEKY_VIEW, $id_leku)->fetchAll();
 }
-    // ✅ KOMPATIBILITA
+
     public function getDataSource($organizace = null, $history = null) {
         return $this->getDataSourceZjednodusene($organizace, $history);
     }

@@ -33,14 +33,12 @@
                         <td>{label ORGANIZACE /}</td>
                         <td>{input ORGANIZACE}</td>
                       </tr>
-                      {* ✅ PŘIDAT MULTISELECT PRO POJIŠŤOVNY *}
                       <tr>
                         <td>{label POJ /}</td>
                         <td>{input POJ}</td>
                       </tr>
                     </table>
 
-                    {* ✅ PŘIDAT ID PRO TOGGLE - STEJNĚ JAKO V OFICIÁLNÍ *}
                     {foreach ['111', '201', '205', '207', '209', '211', '213'] as $poj}
                         <table class="lekovnice" id="p{$poj}_pojistovna">
                           <tr>

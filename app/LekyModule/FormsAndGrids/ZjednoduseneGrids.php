@@ -51,7 +51,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
              ->setFilterText()
              ->setSplitWordsSearch(true);
 
-        // ✅ STAVY POJIŠŤOVEN
+   
         $pojistovny = ['111', '201', '205', '207', '209', '211', '213'];
 
         foreach ($pojistovny as $value) {
@@ -76,7 +76,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                  ->setFilterText();
         }
 
-        // ✅ DETAIL - používá negroupovaná data
+       
         $grid->setItemsDetail(true, "ID_LEKY")
              ->setClass("btn btn-primary btn-sm ajax")
              ->setTitle("Diagnostické skupiny")
@@ -86,7 +86,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
              ->setType("template")
              ->setTemplate(__DIR__."/../templates/Zjednodusene/itemDetail.latte");
 
-        // ✅ HROMADNÉ AKCE
+      
         if (($prava == '9' || $prava == '2') && $poj == 1) {
             $grid->addGroupButtonAction('Hromadná změna pojišťoven')
                  ->setClass("btn btn-success")
@@ -127,17 +127,11 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
     $values->group_action->histori = $values->group_action->histori ?? null;
     $values->group_action->group_by_name = $values->group_action->group_by_name ?? null;
     
-    // ✅ ZÁKLADNÍ logika - bez hacku na detail
     if ($values->group_action->group_by_name) {
         $grid->setDataSource($grid->presenter->BaseModel->getDataSourceGrouped(null, $values->group_action->histori));
         $grid->getSessionData()->group_by_name = true;
         
-        // ❌ ODSTRANIT tento hack - metoda neexistuje:
-        /*
-        $grid->getItemsDetail()->setDataSourceCallback(function($id) use ($grid) {
-            return $grid->presenter->BaseModel->getDataSourceZjednodusene();
-        });
-        */
+     
     } else {
         $grid->setDataSource($grid->presenter->BaseModel->getDataSourceZjednodusene(null, $values->group_action->histori));
         unset($grid->getSessionData()->group_by_name);
