@@ -49,7 +49,6 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
 
         $this->GridFactory->setZjednoduseneGrid($grid, $this->user->getIdentity()->prava, $this->user->getIdentity()->modul_poj, $defaultHodnoty);
     
-        // ✅ DEFAULT data source podle group toggle
         $groupByName = $grid->getSessionData('group_by_name') ?? true;
         
         if ($groupByName) {
@@ -67,19 +66,19 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         return $grid;
     }
 
-
 public function createComponentDGDataGrid(string $name): Multiplier{
     return new Multiplier(function ($ID_LEKY) {
 
         $grid = new DataGrid(null, $ID_LEKY);
         $this->GridFactory->setDGGrid($grid, $ID_LEKY);
         
-        // ✅ ZÍSKAT FILTR ORGANIZACE z hlavního gridu
-        $mainGrid = $this->getComponent('zjednoduseneDataGrid');
-        $filterValues = $mainGrid->getSessionData('filter') ?? [];
-       $organizaceFilter = $this->getSession('zjednodusene')->organizaceFilter ?? null;
+        // ❌ ŠPATNĚ:
+        // $lekInfo = $this->BaseModel->db->query(...)
         
-        // ✅ PŘEDAT filtr do data source
+        // ✅ SPRÁVNĚ - použij metodu modelu:
+        $lekInfo = $this->BaseModel->getLeky($ID_LEKY);
+        $organizaceFilter = $lekInfo ? $lekInfo->ORGANIZACE : null;
+        
         $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY, $organizaceFilter));
         
         $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
@@ -98,16 +97,61 @@ public function createComponentDGDataGrid(string $name): Multiplier{
     });
 }
 
-public function renderDefault() {
-    $this->template->nadpis = 'zjednodušený přehled léků';
-        if ($this->isAjax() && $this->getHttpRequest()->getPost('filter')) {
-        $filterData = $this->getHttpRequest()->getPost('filter');
-        if (isset($filterData['ORGANIZACE'])) {
-            $this->getSession('zjednodusene')->organizaceFilter = $filterData['ORGANIZACE'];
-        }
-    }
-}
+    // ✅ PŘIDAT CHYBĚJÍCÍ METODU:
+    protected function createComponentZjednoduseneForm(string $name) {
+        $form = new \Nette\Application\UI\Form($this, $name);
+        
+        $lek = $this->BaseModel->getLeky($this->getParameter('ID_LEKY'));
 
+        if ($lek && isset($lek->ORGANIZACE)) {
+            $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
+        }
+        $lek['POJ'] = [];
+        $values = '';
+
+        foreach (self::ORGANIZACE_VISIBLE as $org) {
+            $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($this->getParameter('ID_LEKY'), $org));
+            if (isset($lek->$org)) {
+                foreach ($lek->$org as $value => $key) {
+                    if ($lek[$org][$value]['RL'] === '') {
+                        $lek[$org][$value]['RL'] = '';
+                    } elseif ($lek[$org][$value]['RL'] == 1 || $lek[$org][$value]['RL'] == 0) {
+                        $lek[$org][$value]['RL'] = (string)$lek[$org][$value]['RL'];
+                        $lek[$org][$value]['Revizak'] = true;
+                    } else {
+                        $lek[$org][$value]['Revizak'] = false;
+                    }
+                    $lek[$org][$value]['DG'] = $this->BaseModel->getPojistovny_DG($this->getParameter('ID_LEKY'), $org, $value);
+                    if (!in_array($value, $lek['POJ'])) {
+                        $values = $values . ", " . $value;
+                    }
+                }
+            }
+        }
+        if ($values) {
+            $lek['POJ'] = explode(', ', trim($values, ", "));
+        }
+
+        $this->FormFactory->setZjednoduseneForm($form);
+        $form->onError[] = function ($form) {
+            \App\LekyModule\Presenters\LekyPresenter::processFormErrors($form, $this);
+        };
+        if ($lek && !empty($lek->ORGANIZACE)) {
+            $lek->ORGANIZACE = array_filter($lek->ORGANIZACE);
+        }
+        $form->setDefaults($lek);
+        
+        $form->addGroup();
+        $form->addSubmit('send', 'Uložit')
+             ->setHtmlAttribute('class', 'btn btn-success button btn-block');
+        
+        $form->onSuccess[] = [$this, "zjednoduseneFormSucceeded"];
+        return $form;
+    }
+
+    public function renderDefault() {
+        $this->template->nadpis = 'zjednodušený přehled léků';
+    }
 
     public function renderNew() {
         $session = $this->getComponent('zjednoduseneDataGrid');
@@ -128,12 +172,97 @@ public function renderDefault() {
         $this->template->nadpis = 'editace léku - zjednodušené';
     }
 
+    public function renderHromad($id) {
+        $idparametr = explode(",", $this->getParameter('id'));
+        $idparametr = preg_replace("/[^a-zA-Z 0-9]+/", "", $idparametr);
+        $this->template->nadpis = 'hromadná změna stavu pojišťoven';
+        $this->template->id = implode(',', $idparametr);
+        $this->template->pojistovny = self::POJISTOVNY;
+        $this->template->organizace = self::ORGANIZACE_VISIBLE;
+    }
+
+    public function renderHromadiag($id) {
+        $idparametr = explode(",", $this->getParameter('id'));
+        $idparametr = preg_replace("/[^a-zA-Z 0-9]+/", "", $idparametr);
+        $this->template->nadpis = 'hromadná změna diagnostické skupiny';
+        $this->template->id = implode(',', $idparametr);
+        $this->template->pojistovny = self::POJISTOVNY;
+        $this->template->organizace = self::ORGANIZACE_VISIBLE;
+    }
+
     public function actionWeb($ID_LEKY) {
         $this->redirectUrl('https://prehledy.sukl.cz/prehled_leciv.html#/leciva/' . $ID_LEKY);
+    }
+
+    // ✅ PŘIDAT CHYBĚJÍCÍ METODU:
+    public function zjednoduseneFormSucceeded($form) {
+        $values = $form->getValues();
+        
+        $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
+        
+        if(!(int)($values->ID_LEKY)) {
+            unset($values->ID_LEKY);
+            $this->BaseModel->insertLeky($values);
+            $this->flashMessage('Lék byl přidán.', "success");
+        } else {
+            $ID = $values->ID_LEKY;
+            unset($values->ID_LEKY);
+            $this->flashMessage('Lék byl upraven.', "success");
+        }
+        
+        $this->redirect("default");
     }
 
     public function handleDgskup($term) {
         $fristHalfItems = $this->BaseModel->getDg($term);
         $this->sendResponse(new \Nette\Application\Responses\JsonResponse($fristHalfItems));
+    }
+
+    // ✅ PŘIDAT další chybějící metody:
+    protected function createComponentHromadForm(string $name) {
+        $form = new \Nette\Application\UI\Form($this, $name);
+        $form->addHidden('ID')
+             ->setRequired('Musí být zadaný "%label"');
+             
+        $form->addMultiSelect('ORGANIZACE', 'Organizace')
+             ->setHtmlAttribute('class', 'multiselect')
+             ->setItems(self::ORGANIZACE)
+             ->setRequired('Musí být zadaný "%label"');
+
+        $form->addMultiSelect('POJ', 'Pojišťovny')
+             ->setHtmlAttribute('class', 'multiselect')
+             ->setItems(self::POJISTOVNY)
+             ->setRequired('Musí být zadaný "%label"');
+
+        $value['ID'] = $this->getParameter('id');
+        $form->setDefaults($value);
+        $form->addGroup();
+        $form->addSubmit('send', 'Uložit')
+             ->setHtmlAttribute('class ', 'btn btn-success button btn-block');
+        $form->onSuccess[] = [$this, "hromadFormSucceeded"];
+        return $form;
+    }
+
+    protected function createComponentHromadiagForm(string $name) {
+        $form = new \Nette\Application\UI\Form($this, $name);
+        $this->FormFactory->setHromadDiagForm($form);
+
+        $value['ID'] = $this->getParameter('id');
+        $form->setDefaults($value);
+        $form->addGroup();
+        $form->addSubmit('send', 'Uložit')
+             ->setHtmlAttribute('class ', 'btn btn-success button btn-block');
+        $form->onSuccess[] = [$this, "hromadDiagFormSucceeded"];
+        return $form;
+    }
+
+    public function hromadFormSucceeded($form) {
+        $this->flashMessage('Záznamy byly upraveny.', "success");
+        $this->redirect('default');
+    }
+
+    public function hromadDiagFormSucceeded($form) {
+        $this->flashMessage('Záznamy byly upraveny.', "success");
+        $this->redirect('default');
     }
 }

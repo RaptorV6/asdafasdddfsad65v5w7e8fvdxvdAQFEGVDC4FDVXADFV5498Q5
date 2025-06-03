@@ -121,35 +121,37 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
                   ->getControlPrototype()
                   ->setAttribute("onchange", "$(this).parents('form').submit();");
 
-        $container->getForm()->onSubmit[] = function ($form) use ($grid) {
-            $values = $form->getValues();
-            
-            $values->group_action->histori = $values->group_action->histori ?? null;
-            $values->group_action->group_by_name = $values->group_action->group_by_name ?? null;
-            
-            // ✅ KLÍČOVÁ logika - detail VŽDY používá negroupovaná data
-            if ($values->group_action->group_by_name) {
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSourceGrouped(null, $values->group_action->histori));
-                $grid->getSessionData()->group_by_name = true;
-                
-                // ✅ HACK - nastavit pro detail negroupovaná data
-                $grid->getItemsDetail()->setDataSourceCallback(function($id) use ($grid) {
-                    return $grid->presenter->BaseModel->getDataSourceZjednodusene();
-                });
-            } else {
-                $grid->setDataSource($grid->presenter->BaseModel->getDataSourceZjednodusene(null, $values->group_action->histori));
-                unset($grid->getSessionData()->group_by_name);
-            }
-            
-            if ($values->group_action->histori) {
-                $grid->getSessionData()->histori = $values->group_action->histori;
-            } else {
-                unset($grid->getSessionData()->histori);
-                $values->group_action->histori = NULL;
-            }
-            
-            $grid->reload();
-        };
+       $container->getForm()->onSubmit[] = function ($form) use ($grid) {
+    $values = $form->getValues();
+    
+    $values->group_action->histori = $values->group_action->histori ?? null;
+    $values->group_action->group_by_name = $values->group_action->group_by_name ?? null;
+    
+    // ✅ ZÁKLADNÍ logika - bez hacku na detail
+    if ($values->group_action->group_by_name) {
+        $grid->setDataSource($grid->presenter->BaseModel->getDataSourceGrouped(null, $values->group_action->histori));
+        $grid->getSessionData()->group_by_name = true;
+        
+        // ❌ ODSTRANIT tento hack - metoda neexistuje:
+        /*
+        $grid->getItemsDetail()->setDataSourceCallback(function($id) use ($grid) {
+            return $grid->presenter->BaseModel->getDataSourceZjednodusene();
+        });
+        */
+    } else {
+        $grid->setDataSource($grid->presenter->BaseModel->getDataSourceZjednodusene(null, $values->group_action->histori));
+        unset($grid->getSessionData()->group_by_name);
+    }
+    
+    if ($values->group_action->histori) {
+        $grid->getSessionData()->histori = $values->group_action->histori;
+    } else {
+        unset($grid->getSessionData()->histori);
+        $values->group_action->histori = NULL;
+    }
+    
+    $grid->reload();
+};
 
         if ($prava == '9' || $prava == '2') {
             $grid->addToolbarButton("new")
