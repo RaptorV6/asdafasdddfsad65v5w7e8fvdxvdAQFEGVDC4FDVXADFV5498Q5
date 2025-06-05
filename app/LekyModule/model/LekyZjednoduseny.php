@@ -74,31 +74,30 @@ class LekyZjednoduseny extends \App\Model\AModel {
 
 
 public function getDataSource_DG($id_leku, $organizace_filter = null) {
-    $where_organizace = $organizace_filter ? 'AND p.ORGANIZACE = \'' . $organizace_filter . '\'' : '';
+    $query = $this->db->select('
+        ROW_NUMBER() OVER (ORDER BY dg.ID_LEKY, dg.POJISTOVNA) AS ID,
+        dg.ID_LEKY,
+        lek.NAZ as LEK_NAZEV,
+        dg.ORGANIZACE,
+        dg.POJISTOVNA,
+        dg.DG_NAZEV,
+        dg.VILP,
+        CONVERT(nvarchar(20), dg.DG_PLATNOST_OD, 104) as DG_PLATNOST_OD,
+        CONVERT(nvarchar(20), dg.DG_PLATNOST_DO, 104) as DG_PLATNOST_DO,
+        CASE WHEN dg.POJISTOVNA = 111 THEN p.RL ELSE \'\' END as [111_RL],
+        CASE WHEN dg.POJISTOVNA = 111 THEN p.POZNAMKA ELSE \'\' END as [111_POZNAMKA]
+    ')->from(self::POJISTOVNY_DG, 'dg')
+      ->leftJoin(self::LEKY_VIEW, 'lek')->on('dg.ID_LEKY = lek.ID_LEKY AND dg.ORGANIZACE = lek.ORGANIZACE')
+      ->leftJoin(self::POJISTOVNY, 'p')->on('dg.ID_LEKY = p.ID_LEKY AND dg.ORGANIZACE = p.ORGANIZACE AND dg.POJISTOVNA = p.POJISTOVNA')
+      ->where('dg.ID_LEKY = %s', $id_leku)
+      ->and('(dg.DG_PLATNOST_DO >= getdate() or dg.DG_PLATNOST_DO is null)')
+      ->and('dg.DG_NAZEV IS NOT NULL');
     
-    return $this->db->query('
-        SELECT 
-            ROW_NUMBER() OVER (ORDER BY p.ID_LEKY) AS ID,
-            p.ID_LEKY,
-            lek.NAZ as LEK_NAZEV,
-            p.ORGANIZACE,
-            p.POJISTOVNA,
-            dg.DG_NAZEV,
-            dg.VILP,
-            CONVERT(nvarchar(20), dg.DG_PLATNOST_OD, 104) as DG_PLATNOST_OD,
-            CONVERT(nvarchar(20), dg.DG_PLATNOST_DO, 104) as DG_PLATNOST_DO,
-            CASE WHEN p.POJISTOVNA = 111 THEN p.RL ELSE NULL END as [111_RL],
-            CASE WHEN p.POJISTOVNA = 111 THEN p.POZNAMKA ELSE NULL END as [111_POZNAMKA]
-        FROM %n p
-        LEFT JOIN %n dg ON p.ID_LEKY = dg.ID_LEKY 
-            AND p.ORGANIZACE = dg.ORGANIZACE 
-            AND p.POJISTOVNA = dg.POJISTOVNA
-        LEFT JOIN %n lek ON p.ID_LEKY = lek.ID_LEKY AND p.ORGANIZACE = lek.ORGANIZACE
-        WHERE p.ID_LEKY = %s
-            AND (dg.DG_PLATNOST_DO >= GETDATE() OR dg.DG_PLATNOST_DO IS NULL)
-            AND dg.DG_NAZEV IS NOT NULL
-            ' . $where_organizace . '
-    ', self::POJISTOVNY, self::POJISTOVNY_DG, self::LEKY_VIEW, $id_leku)->fetchAll();
+    if ($organizace_filter) {
+        $query->and('dg.ORGANIZACE = %s', $organizace_filter);
+    }
+    
+    return $query->fetchAll();
 }
 
     public function getDataSource($organizace = null, $history = null) {
@@ -157,4 +156,11 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
     public function set_pojistovny_dg_edit($values){ 
         return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); 
     }
+
+    public function unset_pojistovny_dg($values){
+    return $this->db->delete(self::POJISTOVNY_DG)
+                    ->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s", 
+                            $values['ID_LEKY'], $values['ORGANIZACE'], $values['POJISTOVNA'])
+                    ->execute();
+}
 }

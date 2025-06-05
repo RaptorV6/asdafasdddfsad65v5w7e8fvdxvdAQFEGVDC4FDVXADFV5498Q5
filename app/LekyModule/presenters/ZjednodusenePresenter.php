@@ -76,7 +76,7 @@ public function createComponentDGDataGrid(string $name): Multiplier{
         $lekInfo = $this->BaseModel->getLeky($ID_LEKY);
         $organizaceFilter = $lekInfo ? $lekInfo->ORGANIZACE : null;
         
-        $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY, $organizaceFilter));
+        $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
         
         $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
             $this->BaseModel->set_pojistovny_dg($values);
@@ -192,23 +192,113 @@ public function createComponentDGDataGrid(string $name): Multiplier{
     }
 
 
-    public function zjednoduseneFormSucceeded($form) {
-        $values = $form->getValues();
-        
-        $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
-        
-        if(!(int)($values->ID_LEKY)) {
-            unset($values->ID_LEKY);
-            $this->BaseModel->insertLeky($values);
-            $this->flashMessage('Lék byl přidán.', "success");
-        } else {
-            $ID = $values->ID_LEKY;
-            unset($values->ID_LEKY);
-            $this->flashMessage('Lék byl upraven.', "success");
-        }
-        
-        $this->redirect("default");
+public function zjednoduseneFormSucceeded($form) {
+    $values = $form->getValues();
+    
+    $editMode = $this->getAction() === 'edit';
+    
+    if (!$editMode && empty($values->ID_LEKY) && !empty($values->ATC)) {
+        $values->ID_LEKY = $values->ATC;
     }
+    
+    if (empty($values->ID_LEKY)) {
+        $form->addError('ATC skupina musí být vyplněna - slouží jako identifikátor léku.');
+        return;
+    }
+    
+    // Doplň chybějící pole
+    $values->DOP = $values->DOP ?? '';
+    $values->SILA = $values->SILA ?? '';
+    $values->BALENI = $values->BALENI ?? '';
+    $values->ATC3 = $values->ATC3 ?? '';
+    $values->UHR1 = $values->UHR1 ?? null;
+    $values->UHR2 = $values->UHR2 ?? null;
+    $values->UHR3 = $values->UHR3 ?? null;
+    $values->CENA_FAKTURACE = $values->CENA_FAKTURACE ?? null;
+    $values->CENA_MAX = $values->CENA_MAX ?? null;
+    $values->CENA_VYROBCE_BEZDPH = $values->CENA_VYROBCE_BEZDPH ?? null;
+    $values->CENA_SENIMED_BEZDPH = $values->CENA_SENIMED_BEZDPH ?? null;
+    $values->CENA_MUS_PHARMA = $values->CENA_MUS_PHARMA ?? null;
+    $values->CENA_MUS_NC_BEZDPH = $values->CENA_MUS_NC_BEZDPH ?? null;
+    $values->CENA_MUS_NC = $values->CENA_MUS_NC ?? null;
+    $values->UHRADA = $values->UHRADA ?? null;
+    $values->KOMPENZACE = $values->KOMPENZACE ?? null;
+    $values->BONUS = $values->BONUS ?? null;
+    
+    $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
+    
+    // ✅ UKLÁDÁNÍ POJIŠŤOVEN A DG
+    foreach (['MUS'] as $org) {
+        foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojKey) {
+            if (isset($values->$org) && isset($values->$org[$pojKey]) && $values->$org[$pojKey]->STAV) {
+                $pojData = $values->$org[$pojKey];
+                
+                // ✅ REVIZÁK
+                if (isset($pojData->Revizak) && $pojData->Revizak) {
+                    $pojData->RL = $pojData->RL ?? '0';
+                } else {
+                    $pojData->RL = '';
+                }
+                
+                // ✅ UKLÁDÁNÍ DG - BEZ DELETE, jen MERGE
+                if (isset($pojData->DG)) {
+                    foreach ($pojData->DG as $dg) {
+                        if (!empty($dg->DG_NAZEV)) {
+                            $dg->ID_LEKY = $values->ID_LEKY;
+                            $dg->ORGANIZACE = $org;
+                            $dg->POJISTOVNA = $pojKey;
+                            $this->BaseModel->insert_edit_pojistovny_dg($dg);
+                        }
+                    }
+                }
+                
+                // ✅ UKLÁDÁNÍ POJIŠŤOVNY
+                $pojData->ORGANIZACE = $org;
+                $pojData->ID_LEKY = $values->ID_LEKY;
+                $pojData->POJISTOVNA = $pojKey;
+                $pojData->SMLOUVA = $this->setSmlouva($pojData->POJISTOVNA);
+                $this->BaseModel->insert_edit_pojistovny($pojData);
+            }
+        }
+    }
+    
+    // ✅ ZÁKLADNÍ LÉK - jen pro nové
+    if (!$editMode) {
+        if (is_array($values->ORGANIZACE)) {
+            foreach ($values->ORGANIZACE as $key => $value) {
+                $tempValues = clone $values;
+                $tempValues->ORGANIZACE = $value;
+                $this->BaseModel->insertLeky($tempValues);
+            }
+        } else {
+            $this->BaseModel->insertLeky($values);
+        }
+        $this->flashMessage('Lék byl přidán.', "success");
+    } else {
+        $this->flashMessage('Lék byl upraven.', "success");
+    }
+    
+    $this->redirect("default");
+}
+
+
+
+// ✅ PŘIDEJ METODU setSmlouva 
+private function setSmlouva($poj, $smlouva = null) {
+    if ($smlouva) {
+        return $smlouva;
+    } else {
+        if ($poj == '111' || $poj == '205' || $poj == '207') {
+            return 0;
+        } elseif ($poj == '209' || $poj == '213') {
+            return 1;
+        } elseif ($poj == '201') {
+            return 2;
+        } elseif ($poj == '211') {
+            return 3;
+        }
+    }
+}
 
     public function handleDgskup($term) {
         $fristHalfItems = $this->BaseModel->getDg($term);

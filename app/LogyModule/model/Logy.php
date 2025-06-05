@@ -13,7 +13,7 @@ class Logy extends \App\Model\AAModel
     const CHANGE = "log.log_dbchanges";
     public function insertLog($table,$value,$user){
         unset($value->pojistovna);
-        $select = $this->db->select("*")->from($table)->where("ID_LEKY = %i", $value->ID_LEKY)->orderBy("ID_LEKY")->fetch();
+$select = $this->db->select("*")->from($table)->where("ID_LEKY = %s", $value->ID_LEKY)->orderBy("ID_LEKY")->fetch();
         $select = $select ?? "Null";
         $data  = array("datum" => date('Y-m-d H:i:s'), "userid" => $user, "tablename" => $table, "datavaluesold" => json_encode($select), "datavaluesnew" => json_encode($value), "ip" => $_SERVER['REMOTE_ADDR']);
         $this->dbpostgre->insert(self::CHANGE, $data)->execute();

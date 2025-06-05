@@ -199,10 +199,14 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
          ->setSortable()
          ->setFilterText();
 
-    $grid->addColumnText('111_RL', '111 - Revizní lékař')
-         ->setSortable()
-         ->setReplacement(\App\LekyModule\Presenters\ZjednodusenePresenter::TRUEORFALSE)
-         ->setFilterText();
+ $grid->addColumnText('111_RL', '111 - Revizní lékař')
+     ->setSortable()
+     ->setReplacement([
+         '' => 'Ne',
+         '0' => 'povolení RL- žádanka §16', 
+         '1' => 'epikríza/info pro RL'
+     ])
+     ->setFilterText();
 
     $grid->addColumnText('111_POZNAMKA', '111 - Poznámka')
          ->setSortable()

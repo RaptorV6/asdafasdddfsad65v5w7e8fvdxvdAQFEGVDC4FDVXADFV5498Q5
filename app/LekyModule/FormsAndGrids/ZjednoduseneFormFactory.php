@@ -17,7 +17,12 @@ class ZjednoduseneFormFactory {
     }
 public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
     
-    $form->addHidden('ID_LEKY', 'id');
+    $form->addHidden('ID_LEKY');
+
+     $form->addText('ATC', 'ATC skupina')
+         ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
+         ->setNullable();
+
 
     $form->addText('NAZ', 'Název')
          ->setRequired('Musí být vyplněný "%label"')
@@ -32,10 +37,7 @@ public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
     $form->addTextArea('BIOSIMOLAR', 'Biosimilar')
          ->setNullable();
 
-    $form->addText('ATC', 'ATC skupina')
-         ->addRule(Form::MAX_LENGTH, 'Maximální délka pole "%label" je %d znaků.', 7)
-         ->setNullable();
-
+   
     $form->addMultiSelect('ORGANIZACE', 'Organizace')
          ->setHtmlAttribute('class', 'multiselect')
          ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE)
