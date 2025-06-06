@@ -73,31 +73,10 @@ class LekyZjednoduseny extends \App\Model\AModel {
     }
 
 
-public function getDataSource_DG($id_leku, $organizace_filter = null) {
-    $query = $this->db->select('
-        ROW_NUMBER() OVER (ORDER BY dg.ID_LEKY, dg.POJISTOVNA) AS ID,
-        dg.ID_LEKY,
-        lek.NAZ as LEK_NAZEV,
-        dg.ORGANIZACE,
-        dg.POJISTOVNA,
-        dg.DG_NAZEV,
-        dg.VILP,
-        CONVERT(nvarchar(20), dg.DG_PLATNOST_OD, 104) as DG_PLATNOST_OD,
-        CONVERT(nvarchar(20), dg.DG_PLATNOST_DO, 104) as DG_PLATNOST_DO,
-        CASE WHEN dg.POJISTOVNA = 111 THEN p.RL ELSE \'\' END as [111_RL],
-        CASE WHEN dg.POJISTOVNA = 111 THEN p.POZNAMKA ELSE \'\' END as [111_POZNAMKA]
-    ')->from(self::POJISTOVNY_DG, 'dg')
-      ->leftJoin(self::LEKY_VIEW, 'lek')->on('dg.ID_LEKY = lek.ID_LEKY AND dg.ORGANIZACE = lek.ORGANIZACE')
-      ->leftJoin(self::POJISTOVNY, 'p')->on('dg.ID_LEKY = p.ID_LEKY AND dg.ORGANIZACE = p.ORGANIZACE AND dg.POJISTOVNA = p.POJISTOVNA')
-      ->where('dg.ID_LEKY = %s', $id_leku)
-      ->and('(dg.DG_PLATNOST_DO >= getdate() or dg.DG_PLATNOST_DO is null)')
-      ->and('dg.DG_NAZEV IS NOT NULL');
-    
-    if ($organizace_filter) {
-        $query->and('dg.ORGANIZACE = %s', $organizace_filter);
-    }
-    
-    return $query->fetchAll();
+public function getDataSource_DG(string $id_leku) {
+    return $this->db->select('ROW_NUMBER() OVER (ORDER BY ID_LEKY, POJISTOVNA) AS ID,[ID_LEKY],[ORGANIZACE],[POJISTOVNA],[DG_NAZEV],[VILP], CONVERT(nvarchar(20), DG_PLATNOST_OD, 104) as DG_PLATNOST_OD, CONVERT(nvarchar(20), DG_PLATNOST_DO, 104) as DG_PLATNOST_DO')
+                    ->from(self::POJISTOVNY_DG)->as('dg1')
+                    ->where('ID_LEKY = %s and (dg1.DG_PLATNOST_DO >= getdate() or dg1.DG_PLATNOST_DO is null) and NOT (dg1.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg1.ID_LEKY AND dg2.DG_NAZEV = dg1.DG_NAZEV AND dg2.POJISTOVNA != 0))', $id_leku)->fetchAll();
 }
 
     public function getDataSource($organizace = null, $history = null) {
@@ -153,9 +132,40 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
         return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
     }
     
-    public function set_pojistovny_dg_edit($values){ 
-        return $this->db->update(self::POJISTOVNY_DG, ['VILP'=>$values['VILP'],'DG_PLATNOST_OD'=> $values['DG_PLATNOST_OD'],'DG_PLATNOST_DO'=> $values['DG_PLATNOST_DO']])->where("ID_LEKY = %s and ORGANIZACE = %s and POJISTOVNA = %s and DG_NAZEV = %s", $values['ID_LEKY'], $values['ORGANIZACE'],$values['POJISTOVNA'], $values['DG_NAZEV'])->execute(); 
+// V LekyZjednoduseny.php
+public function set_pojistovny_dg_edit($values){ 
+    error_log("=== MODEL SET_POJISTOVNY_DG_EDIT ===");
+    error_log("INPUT VALUES: " . print_r($values, true));
+    
+    // ✅ Připravit data pro update
+    $updateData = [
+        'VILP' => isset($values['VILP']) ? (int)$values['VILP'] : 0,
+        'DG_PLATNOST_OD' => $values['DG_PLATNOST_OD'] ?: null, 
+        'DG_PLATNOST_DO' => $values['DG_PLATNOST_DO'] ?: null
+    ];
+    
+    error_log("UPDATE DATA: " . print_r($updateData, true));
+    
+    try {
+        // ✅ Jednoduchý UPDATE dotaz bez OFFSET problémů
+        $result = $this->db->update(self::POJISTOVNY_DG, $updateData)
+            ->where(
+                "ID_LEKY = %s AND ORGANIZACE = %s AND POJISTOVNA = %s AND DG_NAZEV = %s", 
+                $values['ID_LEKY'], 
+                $values['ORGANIZACE'],
+                $values['POJISTOVNA'], 
+                $values['DG_NAZEV']
+            )->execute();
+            
+        error_log("DB UPDATE RESULT: $result");
+        return $result;
+        
+    } catch (\Exception $e) {
+        error_log("MODEL UPDATE ERROR: " . $e->getMessage());
+        error_log("ERROR TRACE: " . $e->getTraceAsString());
+        throw $e;
     }
+}
 
     public function unset_pojistovny_dg($values){
     return $this->db->delete(self::POJISTOVNY_DG)

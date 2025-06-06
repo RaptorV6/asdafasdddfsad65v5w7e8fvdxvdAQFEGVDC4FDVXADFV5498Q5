@@ -66,33 +66,129 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
         return $grid;
     }
 
+
+
+
+
+
+
+
+// V ZjednodusenePresenter.php
 public function createComponentDGDataGrid(string $name): Multiplier{
+    error_log("=== CREATING DG DATA GRID ===");
+    
     return new Multiplier(function ($ID_LEKY) {
+        error_log("=== MULTIPLIER CALLBACK FOR ID_LEKY: $ID_LEKY ===");
 
         $grid = new DataGrid(null, $ID_LEKY);
-        $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+        error_log("=== GRID CREATED ===");
         
-  
-        $lekInfo = $this->BaseModel->getLeky($ID_LEKY);
-        $organizaceFilter = $lekInfo ? $lekInfo->ORGANIZACE : null;
+        $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+        error_log("=== GRID FACTORY SET ===");
         
         $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
+        error_log("=== DATA SOURCE SET ===");
         
-        $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
-            $this->BaseModel->set_pojistovny_dg($values);
-            $this->flashMessage("Vkládání do databáze proběhlo v pořádku", 'success');
-            $this->redirect('this');
-        };
+        // ✅ ODEBRÁN problémový filter handler
         
-        $grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
-            $this->BaseModel->set_pojistovny_dg_edit($values);
-            $this->flashMessage("Editace proběhla v pořádku", 'success');
-            $this->redirect('this');
-        };
-        
+        error_log("=== RETURNING GRID ===");
         return $grid;
     });
 }
+
+public function processSignal(): void {
+    error_log("=== PROCESS SIGNAL CALLED ===");
+    $signal = $this->getSignal();
+    error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
+    error_log("POST: " . print_r($_POST, true));
+    
+    // ✅ OPRAVENÁ podmínka - zachytí filter submit s inline_edit daty
+    if ($signal && is_array($signal) && count($signal) >= 2 && 
+        strpos($signal[0], 'dGDataGrid-') === 0 && 
+        $signal[1] === 'submit' &&  // ✅ změněno z 'inlineEdit' na 'submit'
+        isset($_POST['inline_edit'])) {
+        
+        error_log("=== PROCESSING INLINE EDIT ===");
+        $inlineData = $_POST['inline_edit'];
+        error_log("INLINE EDIT RAW DATA: " . print_r($inlineData, true));
+        
+        // ✅ Najít původní záznam podle _id
+        $id = $inlineData['_id'] ?? null;
+        if ($id) {
+            // ✅ Získat ID_LEKY z signálu (odstranit -filter část)
+            preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
+            $ID_LEKY = $matches[1] ?? null;
+            
+            error_log("EXTRACTED ID_LEKY: $ID_LEKY");
+            
+            if ($ID_LEKY) {
+                // ✅ Najít původní záznam
+                $originalRecords = $this->BaseModel->getDataSource_DG($ID_LEKY);
+                $targetRow = null;
+                foreach ($originalRecords as $row) {
+                    if ($row->ID == $id) {
+                        $targetRow = $row;
+                        break;
+                    }
+                }
+                
+                error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
+                
+                if ($targetRow) {
+                    // ✅ Sestavit data pro update
+                    $editValues = [
+                        'ID_LEKY' => $targetRow->ID_LEKY,
+                        'ORGANIZACE' => $targetRow->ORGANIZACE,
+                        'POJISTOVNA' => $targetRow->POJISTOVNA,
+                        'DG_NAZEV' => $targetRow->DG_NAZEV,
+                        'VILP' => isset($inlineData['VILP']) && $inlineData['VILP'] === 'on' ? 1 : 0,
+                        'DG_PLATNOST_OD' => $inlineData['DG_PLATNOST_OD'] ?? null,
+                        'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?? null,
+                    ];
+                    
+                    error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
+                    
+                    try {
+                        $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
+                        error_log("UPDATE RESULT: $result");
+                        
+                        $this->flashMessage("Editace proběhla v pořádku", 'success');
+                        $this->redirect('this');
+                        return; // Zastaví další zpracování
+                    } catch (\Exception $e) {
+                        error_log("UPDATE ERROR: " . $e->getMessage());
+                        $this->flashMessage("Chyba při editaci: " . $e->getMessage(), 'error');
+                        $this->redirect('this');
+                        return;
+                    }
+                } else {
+                    error_log("TARGET ROW NOT FOUND FOR ID: $id");
+                }
+            } else {
+                error_log("ID_LEKY NOT EXTRACTED FROM SIGNAL");
+            }
+        } else {
+            error_log("NO _id IN INLINE DATA");
+        }
+    }
+    
+    try {
+        parent::processSignal();
+    } catch (\Exception $e) {
+        error_log("SIGNAL ERROR: " . $e->getMessage());
+        throw $e;
+    }
+}
+
+// ✅ Ostatní metody třídy
+public function handleInlineEdit($id) {
+    error_log("=== HANDLE INLINE EDIT SIGNAL CALLED ===");
+    error_log("ID: $id");
+    error_log("POST DATA: " . print_r($_POST, true));
+    error_log("REQUEST DATA: " . print_r($this->getRequest()->getPost(), true));
+}
+
+
 
 
     protected function createComponentZjednoduseneForm(string $name) {

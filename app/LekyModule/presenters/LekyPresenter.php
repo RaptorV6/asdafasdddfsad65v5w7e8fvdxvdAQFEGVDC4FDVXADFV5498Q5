@@ -69,26 +69,43 @@ class LekyPresenter extends \App\Presenters\SecurePresenter {
 		$grid->setDataSource($this->BaseModel->getDataSource($grid->getSessionData()->lekarnaVyber, $grid->getSessionData()->histori));
 		return $grid;
 	}
+	
 	public function createComponentDGDataGrid(string $name): Multiplier{
-		return new Multiplier(function ($ID_LEKY) {
+    return new Multiplier(function ($ID_LEKY) {
 
-			$grid = new DataGrid(null, $ID_LEKY);
-			$this->GridFactory->setDGGrid($grid, $ID_LEKY);
-			$grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
-			$grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
-				$this->BaseModel->set_pojistovny_dg($values);
-				$this->flashMessage("Vkládání do databáze proběhlo v pořádku", 'success');
-				$this->redirect('this');
-			};
-			$grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
-				$this->BaseModel->set_pojistovny_dg_edit($values);
-				$this->flashMessage("Editace proběhla v pořádku", 'success');
-				$this->redirect('this');
-			};
-			
-			return $grid;
-		});
-	}
+        $grid = new DataGrid(null, $ID_LEKY);
+        $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+        $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
+        
+        $grid->getInlineAdd()->onSubmit[] = function(\Nette\Utils\ArrayHash $values): void {
+            echo "<h1>🔥 OFICIÁLNÍ INLINE ADD HANDLER</h1>";
+            var_dump($values);
+            die();
+            
+            $this->BaseModel->set_pojistovny_dg($values);
+            $this->flashMessage("Vkládání do databáze proběhlo v pořádku", 'success');
+            $this->redirect('this');
+        };
+        
+        // ✅ PŘIDAT DEBUG DO OFICIÁLNÍ INLINE EDIT
+        $grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
+            echo "<h1>🔥 OFICIÁLNÍ INLINE EDIT HANDLER SPUŠTĚN!</h1>";
+            echo "<h2>ID: $id</h2>";
+            echo "<h2>VALUES:</h2>";
+            var_dump($values);
+            echo "<h2>Tracy Bar info:</h2>";
+            \Tracy\Debugger::barDump($values, 'Oficiální Edit Values');
+            \Tracy\Debugger::barDump($id, 'Oficiální Edit ID');
+            die();
+            
+            $this->BaseModel->set_pojistovny_dg_edit($values);
+            $this->flashMessage("Editace proběhla v pořádku", 'success');
+            $this->redirect('this');
+        };
+        
+        return $grid;
+    });
+}
 
 	protected function createComponentLekyForm(string $name) {
 		$form = new \Nette\Application\UI\Form($this, $name);
