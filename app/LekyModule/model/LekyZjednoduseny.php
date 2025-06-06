@@ -74,6 +74,17 @@ public function getDataSourceGrouped($organizace = null, $history = null) {
 }
 
 public function getDataSource_DG($id_leku, $organizace_filter = null) {
+    \Tracy\Debugger::barDump($id_leku, 'DEBUG: ID_LEKU');
+    \Tracy\Debugger::barDump($organizace_filter, 'DEBUG: Organizace filter');
+    
+    // Nejdřív zjistíme, co je vůbec v DG tabulce pro tento lék
+    $debugDG = $this->db->select('*')
+        ->from(self::POJISTOVNY_DG)
+        ->where('ID_LEKY = %s', $id_leku)
+        ->fetchAll();
+    \Tracy\Debugger::barDump($debugDG, 'DEBUG: Všechna DG data pro tento lék');
+    
+    // Pak naše původní dotaz
     $query = $this->db->select('
         ROW_NUMBER() OVER (ORDER BY dg.ID_LEKY, dg.POJISTOVNA) AS ID,
         dg.ID_LEKY,
@@ -97,7 +108,10 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
         $query->and('dg.ORGANIZACE = %s', $organizace_filter);
     }
     
-    return $query->fetchAll();
+    $result = $query->fetchAll();
+    \Tracy\Debugger::barDump($result, 'DEBUG: Finální výsledek');
+    
+    return $result;
 }
 
 

@@ -31,35 +31,45 @@ final class HomepagePresenter extends BasePresenter{
             $this->redirect(':Homepage:default');
         }
         
-        public function createComponentLogInForm(string $name) : Form{
-            $form = new Form($this, $name);
+     public function createComponentLogInForm(string $name) : Form{
+    $form = new Form($this, $name);
+    
+    $form->addText("userId", 'Osobní číslo')
+            ->setNullable()
+            ->setHtmlAttribute("class", "form-control login")
+            ->addRule(Form::FILLED, 'Vyplňte osobní číslo')
+            ->addRule(Form::MAX_LENGTH, 'Maximální délka emailu je %d znaků.', 60);
+    
+    $form->addPassword("userPassword", 'Heslo')
+            ->setNullable()
+            ->setHtmlAttribute("class", "form-control login")
+            ->addRule(Form::FILLED, 'Vyplňte heslo.');
+    
+    $form->addSubmit("loginSubmit", "Přihlásit se")
+         ->setHtmlAttribute("style","margin-bottom: 2%;")
+         ->setHtmlAttribute("class", "btn btn-primary");
+    
+    $form->onSuccess[] = function(Form $form){
+        $values = $form->getValues();
+        if($this->Auth->login($values->userId, $values->userPassword)) {
             
-            $form->addText("userId", 'Osobní číslo')
-                    ->setNullable()
-                    ->setHtmlAttribute("class", "form-control login")
-                    ->addRule(Form::FILLED, 'Vyplňte osobní číslo')
-                    ->addRule(Form::MAX_LENGTH, 'Maximální délka emailu je %d znaků.', 60);
+            // ✅ NOVÉ: Přesměruj podle zapamatovaného modulu
+            $authSession = $this->getSession('auth');
+            $returnModule = $authSession->returnModule ?? 'leky'; // výchozí = leky
             
-            $form->addPassword("userPassword", 'Heslo')
-                    ->setNullable()
-                    ->setHtmlAttribute("class", "form-control login")
-                    ->addRule(Form::FILLED, 'Vyplňte heslo.');
+            if ($returnModule === 'zjednodusene') {
+                $this->redirect(":Leky:Zjednodusene:default");
+            } else {
+                $this->redirect(":Leky:Leky:default");
+            }
             
-            $form->addSubmit("loginSubmit", "Přihlásit se")
-				 ->setHtmlAttribute("style","margin-bottom: 2%;")
-                 ->setHtmlAttribute("class", "btn btn-primary");
-            
-            $form->onSuccess[] = function(Form $form){
-                $values = $form->getValues();
-                if($this->Auth->login($values->userId, $values->userPassword)) {
-                    $this->redirect(":Leky:Leky:default");
-                } else {
-                    $form->getComponent("userId")->addError("Chyba");
-                    $form->getComponent("userPassword")->addError("Špatné jméno nebo heslo");
-                }
-            };
-            
-            return $form;
+        } else {
+            $form->getComponent("userId")->addError("Chyba");
+            $form->getComponent("userPassword")->addError("Špatné jméno nebo heslo");
         }
+    };
+    
+    return $form;
+}
      
 }
