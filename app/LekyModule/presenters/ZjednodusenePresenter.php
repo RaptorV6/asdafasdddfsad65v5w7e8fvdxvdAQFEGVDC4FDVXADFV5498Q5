@@ -69,11 +69,7 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
 
 
 
-
-
-
-
-// V ZjednodusenePresenter.php
+// V app/LekyModule/presenters/ZjednodusenePresenter.php
 public function createComponentDGDataGrid(string $name): Multiplier{
     error_log("=== CREATING DG DATA GRID ===");
     
@@ -83,26 +79,107 @@ public function createComponentDGDataGrid(string $name): Multiplier{
         $grid = new DataGrid(null, $ID_LEKY);
         error_log("=== GRID CREATED ===");
         
-        $this->GridFactory->setDGGrid($grid, $ID_LEKY);
+        // ✅ PŘEDEJ presenter jako parametr do GridFactory
+        $this->GridFactory->setDGGrid($grid, $ID_LEKY, $this);
         error_log("=== GRID FACTORY SET ===");
         
         $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
         error_log("=== DATA SOURCE SET ===");
         
-        // ✅ ODEBRÁN problémový filter handler
+        // ✅ ODSTRANĚNO - neplatné řádky
+        // $grid->BaseModel = $this->BaseModel;
+        // $grid->db = $this->BaseModel->db;
         
         error_log("=== RETURNING GRID ===");
         return $grid;
     });
 }
 
-// V app/LekyModule/presenters/ZjednodusenePresenter.php - oprav processSignal metodu
+// V app/LekyModule/presenters/ZjednodusenePresenter.php - rozšiř processSignal metodu
 public function processSignal(): void {
     error_log("=== PROCESS SIGNAL CALLED ===");
     $signal = $this->getSignal();
     error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
     error_log("POST: " . print_r($_POST, true));
     
+   // V app/LekyModule/presenters/ZjednodusenePresenter.php - uprav inline add část
+if ($signal && is_array($signal) && count($signal) >= 2 && 
+    strpos($signal[0], 'dGDataGrid-') === 0 && 
+    $signal[1] === 'submit' &&
+    isset($_POST['inline_add'])) {
+    
+    error_log("=== PROCESSING INLINE ADD ===");
+    $inlineData = $_POST['inline_add'];
+    error_log("INLINE ADD RAW DATA: " . print_r($inlineData, true));
+    
+    preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
+    $ID_LEKY = $matches[1] ?? null;
+    
+    error_log("EXTRACTED ID_LEKY: $ID_LEKY");
+    
+    if ($ID_LEKY && !empty($inlineData['DG_NAZEV'])) {
+        try {
+            // ✅ Příprava dat jako objekt pro MERGE metodu
+            $dgData = (object)[
+                'ID_LEKY' => $ID_LEKY,
+                'ORGANIZACE' => 'MUS',
+                'POJISTOVNA' => 111,
+                'DG_NAZEV' => $inlineData['DG_NAZEV'],
+                'VILP' => isset($inlineData['VILP']) && $inlineData['VILP'] === 'on' ? 1 : 0,
+                'DG_PLATNOST_OD' => $inlineData['DG_PLATNOST_OD'] ?: null,
+                'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?: null,
+            ];
+            
+            error_log("FINAL ADD VALUES: " . print_r($dgData, true));
+            
+            // ✅ Použij MERGE metodu místo INSERT
+            $result = $this->BaseModel->insert_edit_pojistovny_dg($dgData);
+            error_log("ADD DG RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
+            
+            // ✅ Pojišťovna data pouze pokud máme RL nebo poznámku
+            if ($inlineData['111_RL'] || $inlineData['111_POZNAMKA']) {
+                $pojData = (object)[
+                    'ID_LEKY' => $ID_LEKY,
+                    'ORGANIZACE' => 'MUS',
+                    'POJISTOVNA' => 111,
+                    'RL' => $inlineData['111_RL'] ?? '',
+                    'POZNAMKA' => $inlineData['111_POZNAMKA'] ?? '',
+                    'STAV' => 'Nezadáno',
+                    'SMLOUVA' => 0,
+                    'NASMLOUVANO_OD' => null,
+                ];
+                
+                error_log("POJISTOVNA DATA: " . print_r($pojData, true));
+                
+                try {
+                    $this->BaseModel->insert_edit_pojistovny($pojData);
+                    error_log("ADD POJISTOVNA RESULT: SUCCESS");
+                } catch (\Exception $pojException) {
+                    error_log("POJISTOVNA INSERT ERROR: " . $pojException->getMessage());
+                    // Pokračuj i při chybě pojišťovny
+                }
+            }
+            
+            $this->flashMessage("DG skupina byla úspěšně přidána/upravena", 'success');
+            $this->redirect('this');
+            return;
+            
+        } catch (\Exception $e) {
+            error_log("INLINE ADD ERROR: " . $e->getMessage());
+            error_log("INLINE ADD TRACE: " . $e->getTraceAsString());
+            $this->flashMessage("Chyba při přidávání DG skupiny: " . $e->getMessage(), 'error');
+            $this->redirect('this');
+            return;
+        }
+    } else {
+        error_log("MISSING DATA: ID_LEKY=$ID_LEKY, DG_NAZEV=" . ($inlineData['DG_NAZEV'] ?? 'EMPTY'));
+        $this->flashMessage("Chybí povinné údaje pro přidání DG skupiny", 'error');
+        $this->redirect('this');
+        return;
+    }
+}
+    
+    // ✅ ZACHYŤ INLINE EDIT operace (stávající kód)
     if ($signal && is_array($signal) && count($signal) >= 2 && 
         strpos($signal[0], 'dGDataGrid-') === 0 && 
         $signal[1] === 'submit' &&
@@ -132,15 +209,14 @@ public function processSignal(): void {
                 error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
                 
                 if ($targetRow) {
-                    // ✅ OPRAVENO - čti data z inline formuláře
                     $editValues = [
                         'ID_LEKY' => $targetRow->ID_LEKY,
                         'ORGANIZACE' => $targetRow->ORGANIZACE,
                         'POJISTOVNA' => $targetRow->POJISTOVNA,
-                        'ORIGINAL_DG_NAZEV' => $targetRow->DG_NAZEV, // Zachovej původní pro WHERE
-                        'DG_NAZEV' => $inlineData['DG_NAZEV'] ?? $targetRow->DG_NAZEV, // ✅ Z formuláře
-                        '111_RL' => $inlineData['111_RL'] ?? '', // ✅ Z formuláře
-                        '111_POZNAMKA' => $inlineData['111_POZNAMKA'] ?? '', // ✅ Z formuláře
+                        'ORIGINAL_DG_NAZEV' => $targetRow->DG_NAZEV,
+                        'DG_NAZEV' => $inlineData['DG_NAZEV'] ?? $targetRow->DG_NAZEV,
+                        '111_RL' => $inlineData['111_RL'] ?? '',
+                        '111_POZNAMKA' => $inlineData['111_POZNAMKA'] ?? '',
                         'VILP' => isset($inlineData['VILP']) && $inlineData['VILP'] === 'on' ? 1 : 0,
                         'DG_PLATNOST_OD' => $inlineData['DG_PLATNOST_OD'] ?? null,
                         'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?? null,
@@ -150,7 +226,6 @@ public function processSignal(): void {
                     
                     try {
                         $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
-                        // ✅ OPRAVENO - boolean test
                         error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
                         
                         if ($result) {

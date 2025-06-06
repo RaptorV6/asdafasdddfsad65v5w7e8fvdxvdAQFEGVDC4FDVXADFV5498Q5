@@ -169,7 +169,8 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         return $grid;
     }
 
-public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
+// V app/LekyModule/FormsAndGrids/ZjednoduseneGrids.php - oprav setDGGrid metodu
+public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter = null) {
     $grid->setPrimaryKey("ID");
     $grid->setTranslator($this->getCsTranslator());
     $grid->setColumnsHideable();
@@ -232,25 +233,28 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
          ->setFilterDate()
          ->setAttribute("data-date-language", "cs");
 
-    $grid->addInlineAdd()
+       $grid->addInlineAdd()
         ->setPositionTop()
         ->onControlAdd[] = function (Container $container) use($ID_LEKY){
-            $container->addText("ID_LEKY", "Lék")
-                      ->setDefaultValue($ID_LEKY)
-                      ->setHtmlAttribute('readonly');
-                        
-            $container->addSelect('ORGANIZACE','ORGANIZACE')
-                      ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
-
-            $container->addSelect('POJISTOVNA','Pojišťovna')
-                      ->setItems([0=>'Všechny']+\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
-            
-            $container->addText("DG_NAZEV", "DG Název")
+            $container->addText("DG_NAZEV", "Název DG")
                       ->setHtmlAttribute('data-autocomplete-dg')
+                      ->setRequired('Název DG je povinný')
+                      ->setNullable();
+            
+            $container->addSelect('111_RL', '111 - Revizní lékař')
+                      ->setItems([
+                          '' => 'Ne',
+                          '0' => 'povolení RL- žádanka §16', 
+                          '1' => 'epikríza/info pro RL'
+                      ])
+                      ->setDefaultValue('');
+
+            $container->addText('111_POZNAMKA', '111 - Poznámka')
                       ->setNullable();
         
             $container->addCheckbox('VILP', 'VILP')
-                      ->setHtmlAttribute('class', 'checkbox_style');
+                      ->setHtmlAttribute('class', 'checkbox_style')
+                      ->setDefaultValue(false);
 
             $container->addText('DG_PLATNOST_OD','Platnost od')
                       ->setHtmlType('date')
@@ -259,45 +263,45 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
 
             $container->addText('DG_PLATNOST_DO','Platnost do')
                       ->setHtmlType('date')
-                      ->setDefaultValue(date("Y-m-d"))
+                      ->setDefaultValue(date("Y-m-d", strtotime('+1 year')))
                       ->setNullable();
         };
-
-    // V app/LekyModule/FormsAndGrids/ZjednoduseneGrids.php - zkontroluj, že máš správné názvy polí
-$grid->addInlineEdit()
-    ->onControlAdd[] = function(Container $container): void {
-        $container->addText("LEK_NAZEV", "Lék")
-                  ->setHtmlAttribute('readonly');
-            
-        $container->addText("DG_NAZEV", "DG Název") // ✅ Editovatelné
-                  ->setNullable();
     
-        $container->addSelect('111_RL', '111 - Revizní lékař') // ✅ Editovatelné
-                  ->setItems([
-                      '' => 'Ne',
-                      '0' => 'povolení RL- žádanka §16', 
-                      '1' => 'epikríza/info pro RL'
-                  ]);
+    // ✅ INLINE EDIT zůstává stejný
+    $grid->addInlineEdit()
+        ->onControlAdd[] = function(Container $container): void {
+            $container->addText("LEK_NAZEV", "Lék")
+                      ->setHtmlAttribute('readonly');
+                
+            $container->addText("DG_NAZEV", "DG Název")
+                      ->setNullable();
+        
+            $container->addSelect('111_RL', '111 - Revizní lékař')
+                      ->setItems([
+                          '' => 'Ne',
+                          '0' => 'povolení RL- žádanka §16', 
+                          '1' => 'epikríza/info pro RL'
+                      ]);
 
-        $container->addText('111_POZNAMKA', '111 - Poznámka') // ✅ Editovatelné
-                  ->setNullable();
+            $container->addText('111_POZNAMKA', '111 - Poznámka')
+                      ->setNullable();
 
-        $container->addCheckbox('VILP', 'VILP')
-                  ->setHtmlAttribute('class', 'checkbox_style');
+            $container->addCheckbox('VILP', 'VILP')
+                      ->setHtmlAttribute('class', 'checkbox_style');
 
-        $container->addText('DG_PLATNOST_OD','Platnost od')
-                  ->setHtmlType('date')
-                  ->setNullable();
+            $container->addText('DG_PLATNOST_OD','Platnost od')
+                      ->setHtmlType('date')
+                      ->setNullable();
 
-        $container->addText('DG_PLATNOST_DO','Platnost do')
-                  ->setHtmlType('date')
-                  ->setNullable();
-                  
-        // Hidden fieldy pro identifikaci
-        $container->addHidden('ID_LEKY');
-        $container->addHidden('ORGANIZACE'); 
-        $container->addHidden('POJISTOVNA');
-    };
+            $container->addText('DG_PLATNOST_DO','Platnost do')
+                      ->setHtmlType('date')
+                      ->setNullable();
+                      
+            // Hidden fieldy pro identifikaci
+            $container->addHidden('ID_LEKY');
+            $container->addHidden('ORGANIZACE');
+            $container->addHidden('POJISTOVNA');
+        };
 
     $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
         $PLATNOST_OD = $item['DG_PLATNOST_OD'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_OD'])->format('Y-m-d') : NULL;

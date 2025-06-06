@@ -149,9 +149,12 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
         return $this->db->query("MERGE INTO " . self::POJISTOVNY_DG . " as poj USING (SELECT ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s) AS spoj ON poj.ID_LEKY = spoj.ID_LEKY AND poj.ORGANIZACE = spoj.ORGANIZACE AND poj.POJISTOVNA = spoj.POJISTOVNA AND poj.DG_NAZEV = spoj.DG_NAZEV WHEN MATCHED THEN UPDATE SET ID_LEKY = %s, ORGANIZACE = %s, POJISTOVNA = %i, DG_NAZEV = %s, VILP = %b, DG_PLATNOST_OD = %d, DG_PLATNOST_DO = %d WHEN NOT MATCHED THEN INSERT (ID_LEKY, ORGANIZACE, POJISTOVNA, DG_NAZEV, VILP, DG_PLATNOST_OD, DG_PLATNOST_DO) VALUES(%s,%s,%i,%s,%b,%d,%d);", $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO, $dg->ID_LEKY, $dg->ORGANIZACE, $dg->POJISTOVNA, $dg->DG_NAZEV, $dg->VILP, $dg->DG_PLATNOST_OD, $dg->DG_PLATNOST_DO);
     }
 
-    public function set_pojistovny_dg($values){ 
-        return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
-    }
+public function set_pojistovny_dg($values){ 
+    error_log("=== INSERT DG DATA ===");
+    error_log("INSERT VALUES: " . print_r($values, true));
+    
+    return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
+}
     
 // V app/LekyModule/model/LekyZjednoduseny.php - oprav metodu set_pojistovny_dg_edit
 public function set_pojistovny_dg_edit($values){ 
