@@ -77,14 +77,12 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
     \Tracy\Debugger::barDump($id_leku, 'DEBUG: ID_LEKU');
     \Tracy\Debugger::barDump($organizace_filter, 'DEBUG: Organizace filter');
     
-    // Nejdřív zjistíme, co je vůbec v DG tabulce pro tento lék
     $debugDG = $this->db->select('*')
         ->from(self::POJISTOVNY_DG)
         ->where('ID_LEKY = %s', $id_leku)
         ->fetchAll();
     \Tracy\Debugger::barDump($debugDG, 'DEBUG: Všechna DG data pro tento lék');
     
-    // Pak naše původní dotaz
     $query = $this->db->select('
         ROW_NUMBER() OVER (ORDER BY dg.ID_LEKY, dg.POJISTOVNA) AS ID,
         dg.ID_LEKY,
@@ -182,7 +180,6 @@ public function set_pojistovny_dg_edit($values){
     //error_log("=== MODEL SET_POJISTOVNY_DG_EDIT ===");
     //error_log("INPUT VALUES: " . print_r($values, true));
     
-    // ✅ Sestavit původní WHERE podmínku PŘED změnami
     $originalValues = [
         'ID_LEKY' => $values['ID_LEKY'],
         'ORGANIZACE' => $values['ORGANIZACE'],
@@ -190,7 +187,6 @@ public function set_pojistovny_dg_edit($values){
         'DG_NAZEV' => $values['ORIGINAL_DG_NAZEV'] ?? $values['DG_NAZEV'] // Použij původní název
     ];
     
-    // ✅ Update DG tabulky
     $updateDataDG = [
         'DG_NAZEV' => $values['DG_NAZEV'] ?? null,
         'VILP' => isset($values['VILP']) ? (int)$values['VILP'] : 0,
@@ -207,7 +203,6 @@ public function set_pojistovny_dg_edit($values){
             $originalValues['DG_NAZEV']
         )->execute();
     
-    // ✅ Update pojišťovny tabulky pro 111_RL a 111_POZNAMKA
     if ($values['POJISTOVNA'] == 111 && (isset($values['111_RL']) || isset($values['111_POZNAMKA']))) {
         $updateDataPoj = [
             'RL' => $values['111_RL'] ?? '',
@@ -222,11 +217,9 @@ public function set_pojistovny_dg_edit($values){
                 $values['POJISTOVNA']
             )->execute();
             
-        // ✅ OPRAVENO - getRowCount() místo objektu
         //error_log("POJISTOVNY UPDATE RESULT: " . $resultPoj->getRowCount());
     }
     
-    // ✅ OPRAVENO - getRowCount() místo objektu
     //error_log("DG UPDATE RESULT: " . $resultDG->getRowCount());
     return $resultDG->getRowCount() > 0; // Vrať boolean
 }

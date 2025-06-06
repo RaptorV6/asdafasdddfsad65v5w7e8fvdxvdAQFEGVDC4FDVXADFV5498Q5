@@ -87,7 +87,6 @@ class LekyPresenter extends \App\Presenters\SecurePresenter {
             $this->redirect('this');
         };
         
-        // ✅ PŘIDAT DEBUG DO OFICIÁLNÍ INLINE EDIT
         $grid->getInlineEdit()->onSubmit[] = function($id, $values): void {
             echo "<h1>🔥 OFICIÁLNÍ INLINE EDIT HANDLER SPUŠTĚN!</h1>";
             echo "<h2>ID: $id</h2>";

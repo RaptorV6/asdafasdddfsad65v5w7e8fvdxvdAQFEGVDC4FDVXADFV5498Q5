@@ -79,14 +79,12 @@ public function createComponentDGDataGrid(string $name): Multiplier{
         $grid = new DataGrid(null, $ID_LEKY);
         ////error_log("=== GRID CREATED ===");
         
-        // ✅ PŘEDEJ presenter jako parametr do GridFactory
         $this->GridFactory->setDGGrid($grid, $ID_LEKY, $this);
         ////error_log("=== GRID FACTORY SET ===");
         
         $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
         ////error_log("=== DATA SOURCE SET ===");
         
-        // ✅ ODSTRANĚNO - neplatné řádky
         // $grid->BaseModel = $this->BaseModel;
         // $grid->db = $this->BaseModel->db;
         
@@ -119,7 +117,6 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     
     if ($ID_LEKY && !empty($inlineData['DG_NAZEV'])) {
         try {
-            // ✅ Příprava dat jako objekt pro MERGE metodu
             $dgData = (object)[
                 'ID_LEKY' => $ID_LEKY,
                 'ORGANIZACE' => 'MUS',
@@ -132,11 +129,9 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
             
             ////error_log("FINAL ADD VALUES: " . print_r($dgData, true));
             
-            // ✅ Použij MERGE metodu místo INSERT
             $result = $this->BaseModel->insert_edit_pojistovny_dg($dgData);
             ////error_log("ADD DG RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
             
-            // ✅ Pojišťovna data pouze pokud máme RL nebo poznámku
             if ($inlineData['111_RL'] || $inlineData['111_POZNAMKA']) {
                 $pojData = (object)[
                     'ID_LEKY' => $ID_LEKY,
@@ -179,7 +174,6 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     }
 }
     
-    // ✅ ZACHYŤ INLINE EDIT operace (stávající kód)
     if ($signal && is_array($signal) && count($signal) >= 2 && 
         strpos($signal[0], 'dGDataGrid-') === 0 && 
         $signal[1] === 'submit' &&
@@ -255,7 +249,6 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     }
 }
 
-// ✅ Ostatní metody třídy
 public function handleInlineEdit($id) {
     //error_log("=== HANDLE INLINE EDIT SIGNAL CALLED ===");
     //error_log("ID: $id");
@@ -269,12 +262,10 @@ public function handleInlineEdit($id) {
    protected function createComponentZjednoduseneForm(string $name) {
     $form = new \Nette\Application\UI\Form($this, $name);
     
-    // ✅ OPRAVA: Kontrola existence parametru
     $id_leky = $this->getParameter('ID_LEKY');
     $lek = null;
     
     if ($id_leky) {
-        // Editace existujícího léku
         $lek = $this->BaseModel->getLeky($id_leky);
         
         if ($lek && isset($lek->ORGANIZACE)) {
@@ -306,7 +297,6 @@ public function handleInlineEdit($id) {
             $lek['POJ'] = explode(', ', trim($values, ", "));
         }
     } else {
-        // ✅ NOVÝ LÉK: Inicializace prázdných hodnot
         $lek = [];
     }
 
@@ -378,12 +368,10 @@ public function zjednoduseneFormSucceeded($form) {
     
     $editMode = $this->getAction() === 'edit';
     
-    // ✅ Generovat ID_LEKY z ATC pro nové léky
     if (!$editMode && empty($values->ID_LEKY) && !empty($values->ATC)) {
         $values->ID_LEKY = $values->ATC;
     }
     
-    // Doplň chybějící pole pro MERGE dotaz
     $values->DOP = $values->DOP ?? '';
     $values->SILA = $values->SILA ?? '';
     $values->BALENI = $values->BALENI ?? '';
@@ -404,7 +392,6 @@ public function zjednoduseneFormSucceeded($form) {
     
     $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
     
-    // ✅ UKLÁDÁNÍ POJIŠŤOVEN A DG (pro MUS organizaci)
     foreach (['MUS'] as $org) {
         foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojKey) {
             if (isset($values->$org) && isset($values->$org[$pojKey]) && $values->$org[$pojKey]->STAV) {
@@ -439,7 +426,6 @@ public function zjednoduseneFormSucceeded($form) {
         }
     }
     
-    // ✅ ZÁKLADNÍ LÉK
     if (is_array($values->ORGANIZACE)) {
         foreach ($values->ORGANIZACE as $key => $value) {
             $tempValues = clone $values;
@@ -460,7 +446,6 @@ public function zjednoduseneFormSucceeded($form) {
 }
 
 
-// ✅ PŘIDEJ METODU setSmlouva 
 private function setSmlouva($poj, $smlouva = null) {
     if ($smlouva) {
         return $smlouva;

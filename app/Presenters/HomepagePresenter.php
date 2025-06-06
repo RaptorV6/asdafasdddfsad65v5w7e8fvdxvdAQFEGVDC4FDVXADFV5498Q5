@@ -53,7 +53,6 @@ final class HomepagePresenter extends BasePresenter{
         $values = $form->getValues();
         if($this->Auth->login($values->userId, $values->userPassword)) {
             
-            // ✅ NOVÉ: Přesměruj podle zapamatovaného modulu
             $authSession = $this->getSession('auth');
             $returnModule = $authSession->returnModule ?? 'leky'; // výchozí = leky
             

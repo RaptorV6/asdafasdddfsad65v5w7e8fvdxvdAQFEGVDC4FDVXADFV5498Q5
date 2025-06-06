@@ -14,7 +14,6 @@ abstract class SecurePresenter extends BasePresenter {
             $this->template->logged = $this->user->isLoggedIn();
             $this->template->prava = $this->user->getIdentity()->prava;
         } else {
-            // ✅ NOVÉ: Zapamatuj si odkud uživatel přišel
             $this->rememberCurrentModule();
             
             $this->template->logged = false;

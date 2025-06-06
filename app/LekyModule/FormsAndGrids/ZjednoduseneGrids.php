@@ -169,7 +169,6 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         return $grid;
     }
 
-// V app/LekyModule/FormsAndGrids/ZjednoduseneGrids.php - oprav setDGGrid metodu
 public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter = null) {
     $grid->setPrimaryKey("ID");
     $grid->setTranslator($this->getCsTranslator());
@@ -267,7 +266,6 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter
                       ->setNullable();
         };
     
-    // ✅ INLINE EDIT zůstává stejný
     $grid->addInlineEdit()
         ->onControlAdd[] = function(Container $container): void {
             $container->addText("LEK_NAZEV", "Lék")
