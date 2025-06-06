@@ -169,31 +169,33 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         return $grid;
     }
 
-// V ZjednoduseneGrids.php - nahraďte celou setDGGrid metodu
 public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
     $grid->setPrimaryKey("ID");
     $grid->setTranslator($this->getCsTranslator());
     $grid->setColumnsHideable();
 
-    $grid->addColumnText('ID', '#')
-         ->setSortable()
-         ->setFilterText();
+    // ✅ SLOUPCE PODLE ZADÁNÍ
 
-    $grid->addColumnText('ID_LEKY', 'Lék')
+    $grid->addColumnText('LEK_NAZEV', 'Lék')
          ->setSortable()
-         ->setFilterText();
-
-    $grid->addColumnText('ORGANIZACE', 'Organizace')
-         ->setSortable()
-         ->setFilterMultiSelect(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
-
-    $grid->addColumnText('POJISTOVNA', 'Pojišťovna')
-         ->setSortable()
-         ->setReplacement(['0'=>'Všechny'])
          ->setFilterText();
 
     $grid->addColumnText('DG_NAZEV', 'Název DG')
          ->setSortable()
+         ->setFilterText();
+
+    $grid->addColumnText('111_RL', '111 - Revizní lékař')
+         ->setSortable()
+         ->setReplacement([
+             '' => 'Ne',
+             '0' => 'povolení RL- žádanka §16', 
+             '1' => 'epikríza/info pro RL'
+         ])
+         ->setFilterText();
+
+    $grid->addColumnText('111_POZNAMKA', '111 - Poznámka')
+         ->setSortable()
+         ->setReplacement(["" => "-"])
          ->setFilterText();
 
     $grid->addColumnText('VILP', 'VILP')
@@ -217,6 +219,7 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
          ->setFilterDate()
          ->setAttribute("data-date-language", "cs");
 
+    // ✅ INLINE ADD/EDIT zůstává stejné
     $grid->addInlineAdd()
         ->setPositionTop()
         ->onControlAdd[] = function (Container $container) use($ID_LEKY){

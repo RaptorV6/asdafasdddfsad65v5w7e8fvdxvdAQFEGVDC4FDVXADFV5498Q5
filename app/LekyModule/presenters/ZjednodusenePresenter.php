@@ -149,11 +149,13 @@ public function processSignal(): void {
                     error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
                     
                     try {
-                        $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
-                        error_log("UPDATE RESULT: $result");
-                        
-                        $this->flashMessage("Editace proběhla v pořádku", 'success');
-                        $this->redirect('this');
+                      $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
+error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED')); // ✅ Opraveno
+
+// ✅ JEDNODUŠE - vždy success pokud nedojde k výjimce
+$this->flashMessage("Editace proběhla v pořádku", 'success');
+
+$this->redirect('this');
                         return; // Zastaví další zpracování
                     } catch (\Exception $e) {
                         error_log("UPDATE ERROR: " . $e->getMessage());
