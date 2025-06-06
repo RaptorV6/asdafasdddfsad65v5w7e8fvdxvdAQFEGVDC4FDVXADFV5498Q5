@@ -71,36 +71,36 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
 
 // V app/LekyModule/presenters/ZjednodusenePresenter.php
 public function createComponentDGDataGrid(string $name): Multiplier{
-    error_log("=== CREATING DG DATA GRID ===");
+    ////error_log("=== CREATING DG DATA GRID ===");
     
     return new Multiplier(function ($ID_LEKY) {
-        error_log("=== MULTIPLIER CALLBACK FOR ID_LEKY: $ID_LEKY ===");
+        ////error_log("=== MULTIPLIER CALLBACK FOR ID_LEKY: $ID_LEKY ===");
 
         $grid = new DataGrid(null, $ID_LEKY);
-        error_log("=== GRID CREATED ===");
+        ////error_log("=== GRID CREATED ===");
         
         // ✅ PŘEDEJ presenter jako parametr do GridFactory
         $this->GridFactory->setDGGrid($grid, $ID_LEKY, $this);
-        error_log("=== GRID FACTORY SET ===");
+        ////error_log("=== GRID FACTORY SET ===");
         
         $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
-        error_log("=== DATA SOURCE SET ===");
+        ////error_log("=== DATA SOURCE SET ===");
         
         // ✅ ODSTRANĚNO - neplatné řádky
         // $grid->BaseModel = $this->BaseModel;
         // $grid->db = $this->BaseModel->db;
         
-        error_log("=== RETURNING GRID ===");
+        ////error_log("=== RETURNING GRID ===");
         return $grid;
     });
 }
 
 // V app/LekyModule/presenters/ZjednodusenePresenter.php - rozšiř processSignal metodu
 public function processSignal(): void {
-    error_log("=== PROCESS SIGNAL CALLED ===");
+    ////error_log("=== PROCESS SIGNAL CALLED ===");
     $signal = $this->getSignal();
-    error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
-    error_log("POST: " . print_r($_POST, true));
+    ////error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
+    ////error_log("POST: " . print_r($_POST, true));
     
    // V app/LekyModule/presenters/ZjednodusenePresenter.php - uprav inline add část
 if ($signal && is_array($signal) && count($signal) >= 2 && 
@@ -108,14 +108,14 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     $signal[1] === 'submit' &&
     isset($_POST['inline_add'])) {
     
-    error_log("=== PROCESSING INLINE ADD ===");
+    ////error_log("=== PROCESSING INLINE ADD ===");
     $inlineData = $_POST['inline_add'];
-    error_log("INLINE ADD RAW DATA: " . print_r($inlineData, true));
+    ////error_log("INLINE ADD RAW DATA: " . print_r($inlineData, true));
     
     preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
     $ID_LEKY = $matches[1] ?? null;
     
-    error_log("EXTRACTED ID_LEKY: $ID_LEKY");
+    ////error_log("EXTRACTED ID_LEKY: $ID_LEKY");
     
     if ($ID_LEKY && !empty($inlineData['DG_NAZEV'])) {
         try {
@@ -130,11 +130,11 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                 'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?: null,
             ];
             
-            error_log("FINAL ADD VALUES: " . print_r($dgData, true));
+            ////error_log("FINAL ADD VALUES: " . print_r($dgData, true));
             
             // ✅ Použij MERGE metodu místo INSERT
             $result = $this->BaseModel->insert_edit_pojistovny_dg($dgData);
-            error_log("ADD DG RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
+            ////error_log("ADD DG RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
             
             // ✅ Pojišťovna data pouze pokud máme RL nebo poznámku
             if ($inlineData['111_RL'] || $inlineData['111_POZNAMKA']) {
@@ -149,13 +149,13 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                     'NASMLOUVANO_OD' => null,
                 ];
                 
-                error_log("POJISTOVNA DATA: " . print_r($pojData, true));
+                ////error_log("POJISTOVNA DATA: " . print_r($pojData, true));
                 
                 try {
                     $this->BaseModel->insert_edit_pojistovny($pojData);
-                    error_log("ADD POJISTOVNA RESULT: SUCCESS");
+                    ////error_log("ADD POJISTOVNA RESULT: SUCCESS");
                 } catch (\Exception $pojException) {
-                    error_log("POJISTOVNA INSERT ERROR: " . $pojException->getMessage());
+                    ////error_log("POJISTOVNA INSERT ERROR: " . $pojException->getMessage());
                     // Pokračuj i při chybě pojišťovny
                 }
             }
@@ -165,14 +165,14 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
             return;
             
         } catch (\Exception $e) {
-            error_log("INLINE ADD ERROR: " . $e->getMessage());
-            error_log("INLINE ADD TRACE: " . $e->getTraceAsString());
+            ////error_log("INLINE ADD ERROR: " . $e->getMessage());
+            ////error_log("INLINE ADD TRACE: " . $e->getTraceAsString());
             $this->flashMessage("Chyba při přidávání DG skupiny: " . $e->getMessage(), 'error');
             $this->redirect('this');
             return;
         }
     } else {
-        error_log("MISSING DATA: ID_LEKY=$ID_LEKY, DG_NAZEV=" . ($inlineData['DG_NAZEV'] ?? 'EMPTY'));
+        ////error_log("MISSING DATA: ID_LEKY=$ID_LEKY, DG_NAZEV=" . ($inlineData['DG_NAZEV'] ?? 'EMPTY'));
         $this->flashMessage("Chybí povinné údaje pro přidání DG skupiny", 'error');
         $this->redirect('this');
         return;
@@ -185,16 +185,16 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
         $signal[1] === 'submit' &&
         isset($_POST['inline_edit'])) {
         
-        error_log("=== PROCESSING INLINE EDIT ===");
+        ////error_log("=== PROCESSING INLINE EDIT ===");
         $inlineData = $_POST['inline_edit'];
-        error_log("INLINE EDIT RAW DATA: " . print_r($inlineData, true));
+        ////error_log("INLINE EDIT RAW DATA: " . print_r($inlineData, true));
         
         $id = $inlineData['_id'] ?? null;
         if ($id) {
             preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
             $ID_LEKY = $matches[1] ?? null;
             
-            error_log("EXTRACTED ID_LEKY: $ID_LEKY");
+            ////error_log("EXTRACTED ID_LEKY: $ID_LEKY");
             
             if ($ID_LEKY) {
                 $originalRecords = $this->BaseModel->getDataSource_DG($ID_LEKY);
@@ -206,7 +206,7 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                     }
                 }
                 
-                error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
+                //error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
                 
                 if ($targetRow) {
                     $editValues = [
@@ -222,11 +222,11 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                         'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?? null,
                     ];
                     
-                    error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
+                    //error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
                     
                     try {
                         $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
-                        error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
+                        //error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
                         
                         if ($result) {
                             $this->flashMessage("Editace proběhla v pořádku", 'success');
@@ -237,7 +237,7 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                         $this->redirect('this');
                         return;
                     } catch (\Exception $e) {
-                        error_log("UPDATE ERROR: " . $e->getMessage());
+                        //error_log("UPDATE ERROR: " . $e->getMessage());
                         $this->flashMessage("Chyba při editaci: " . $e->getMessage(), 'error');
                         $this->redirect('this');
                         return;
@@ -250,17 +250,17 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     try {
         parent::processSignal();
     } catch (\Exception $e) {
-        error_log("SIGNAL ERROR: " . $e->getMessage());
+        //error_log("SIGNAL ERROR: " . $e->getMessage());
         throw $e;
     }
 }
 
 // ✅ Ostatní metody třídy
 public function handleInlineEdit($id) {
-    error_log("=== HANDLE INLINE EDIT SIGNAL CALLED ===");
-    error_log("ID: $id");
-    error_log("POST DATA: " . print_r($_POST, true));
-    error_log("REQUEST DATA: " . print_r($this->getRequest()->getPost(), true));
+    //error_log("=== HANDLE INLINE EDIT SIGNAL CALLED ===");
+    //error_log("ID: $id");
+    //error_log("POST DATA: " . print_r($_POST, true));
+    //error_log("REQUEST DATA: " . print_r($this->getRequest()->getPost(), true));
 }
 
 

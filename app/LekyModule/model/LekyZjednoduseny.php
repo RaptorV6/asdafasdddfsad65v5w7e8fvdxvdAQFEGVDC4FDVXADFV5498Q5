@@ -150,16 +150,16 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
     }
 
 public function set_pojistovny_dg($values){ 
-    error_log("=== INSERT DG DATA ===");
-    error_log("INSERT VALUES: " . print_r($values, true));
+    //error_log("=== INSERT DG DATA ===");
+    //error_log("INSERT VALUES: " . print_r($values, true));
     
     return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
 }
     
 // V app/LekyModule/model/LekyZjednoduseny.php - oprav metodu set_pojistovny_dg_edit
 public function set_pojistovny_dg_edit($values){ 
-    error_log("=== MODEL SET_POJISTOVNY_DG_EDIT ===");
-    error_log("INPUT VALUES: " . print_r($values, true));
+    //error_log("=== MODEL SET_POJISTOVNY_DG_EDIT ===");
+    //error_log("INPUT VALUES: " . print_r($values, true));
     
     // ✅ Sestavit původní WHERE podmínku PŘED změnami
     $originalValues = [
@@ -202,11 +202,11 @@ public function set_pojistovny_dg_edit($values){
             )->execute();
             
         // ✅ OPRAVENO - getRowCount() místo objektu
-        error_log("POJISTOVNY UPDATE RESULT: " . $resultPoj->getRowCount());
+        //error_log("POJISTOVNY UPDATE RESULT: " . $resultPoj->getRowCount());
     }
     
     // ✅ OPRAVENO - getRowCount() místo objektu
-    error_log("DG UPDATE RESULT: " . $resultDG->getRowCount());
+    //error_log("DG UPDATE RESULT: " . $resultDG->getRowCount());
     return $resultDG->getRowCount() > 0; // Vrať boolean
 }
 
