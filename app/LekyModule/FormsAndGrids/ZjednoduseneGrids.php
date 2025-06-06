@@ -174,7 +174,20 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
     $grid->setTranslator($this->getCsTranslator());
     $grid->setColumnsHideable();
 
-    // ✅ SLOUPCE PODLE ZADÁNÍ
+    $grid->addColumnText('ID', '#')
+         ->setSortable()
+         ->setDefaultHide()
+         ->setFilterText();
+
+    $grid->addColumnText('ID_LEKY', 'Kód léku')
+         ->setSortable()
+         ->setDefaultHide()  
+         ->setFilterText();
+
+    $grid->addColumnText('ORGANIZACE', 'Organizace')
+         ->setSortable()
+         ->setDefaultHide()  
+         ->setFilterText();
 
     $grid->addColumnText('LEK_NAZEV', 'Lék')
          ->setSortable()
@@ -219,7 +232,6 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
          ->setFilterDate()
          ->setAttribute("data-date-language", "cs");
 
-    // ✅ INLINE ADD/EDIT zůstává stejné
     $grid->addInlineAdd()
         ->setPositionTop()
         ->onControlAdd[] = function (Container $container) use($ID_LEKY){
@@ -253,21 +265,22 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
 
     $grid->addInlineEdit()
         ->onControlAdd[] = function(Container $container): void {
-            $container->addText("ID_LEKY", "Lék")
+            $container->addText("LEK_NAZEV", "Lék")
                       ->setHtmlAttribute('readonly');
                 
-            $container->addSelect('ORGANIZACE','ORGANIZACE')
-                      ->setHtmlAttribute('readonly')
-                      ->setItems(\App\LekyModule\Presenters\ZjednodusenePresenter::ORGANIZACE);
-
-            $container->addSelect('POJISTOVNA', 'Pojišťovna')
-                      ->setHtmlAttribute('readonly')
-                      ->setItems([0=>'Všechny']+\App\LekyModule\Presenters\ZjednodusenePresenter::POJISTOVNY);
-            
             $container->addText("DG_NAZEV", "DG Název")
-                      ->setHtmlAttribute('readonly')
                       ->setNullable();
         
+            $container->addSelect('111_RL', '111 - Revizní lékař')
+                      ->setItems([
+                          '' => 'Ne',
+                          '0' => 'povolení RL- žádanka §16', 
+                          '1' => 'epikríza/info pro RL'
+                      ]);
+
+            $container->addText('111_POZNAMKA', '111 - Poznámka')
+                      ->setNullable();
+
             $container->addCheckbox('VILP', 'VILP')
                       ->setHtmlAttribute('class', 'checkbox_style');
 
@@ -278,6 +291,11 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
             $container->addText('DG_PLATNOST_DO','Platnost do')
                       ->setHtmlType('date')
                       ->setNullable();
+                      
+            // ✅ Hidden fieldy pro identifikaci
+            $container->addHidden('ID_LEKY');
+            $container->addHidden('ORGANIZACE');
+            $container->addHidden('POJISTOVNA');
         };
 
     $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
@@ -285,13 +303,17 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
         $PLATNOST_DO = $item['DG_PLATNOST_DO'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_DO'])->format('Y-m-d') : NULL;
         
         $container->setDefaults([
+            'LEK_NAZEV' => $item['LEK_NAZEV'],
+            'DG_NAZEV' => $item['DG_NAZEV'],
+            '111_RL' => $item['111_RL'],
+            '111_POZNAMKA' => $item['111_POZNAMKA'],
+            'VILP' => $item['VILP'],
+            'DG_PLATNOST_OD' => $PLATNOST_OD,
+            'DG_PLATNOST_DO' => $PLATNOST_DO,
+            // Hidden
             'ID_LEKY' => $item['ID_LEKY'],
             'ORGANIZACE' => $item['ORGANIZACE'],
             'POJISTOVNA' => $item['POJISTOVNA'],
-            'VILP' => $item['VILP'],
-            'DG_NAZEV' => $item['DG_NAZEV'],
-            'DG_PLATNOST_OD' => $PLATNOST_OD,
-            'DG_PLATNOST_DO' => $PLATNOST_DO,
         ]);
     };
 

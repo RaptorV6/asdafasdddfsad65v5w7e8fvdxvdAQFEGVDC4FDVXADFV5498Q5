@@ -72,7 +72,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
         return $select->fetchAll();
     }
 
-public function getDataSource_DG(string $id_leku, $organizace_filter = null) {
+public function getDataSource_DG($id_leku, $organizace_filter = null) {
     $query = $this->db->select('
         ROW_NUMBER() OVER (ORDER BY dg.ID_LEKY, dg.POJISTOVNA) AS ID,
         dg.ID_LEKY,
@@ -90,8 +90,7 @@ public function getDataSource_DG(string $id_leku, $organizace_filter = null) {
       ->leftJoin(self::POJISTOVNY, 'p')->on('dg.ID_LEKY = p.ID_LEKY AND dg.ORGANIZACE = p.ORGANIZACE AND dg.POJISTOVNA = p.POJISTOVNA')
       ->where('dg.ID_LEKY = %s', $id_leku)
       ->and('(dg.DG_PLATNOST_DO >= getdate() or dg.DG_PLATNOST_DO is null)')
-      ->and('dg.DG_NAZEV IS NOT NULL')
-      ->and('NOT (dg.POJISTOVNA = 0 AND EXISTS (SELECT 1 FROM AKESO_LEKY_POJISTOVNY_DG dg2 WHERE dg2.ID_LEKY = dg.ID_LEKY AND dg2.DG_NAZEV = dg.DG_NAZEV AND dg2.POJISTOVNA != 0))');
+      ->and('dg.DG_NAZEV IS NOT NULL');
     
     if ($organizace_filter) {
         $query->and('dg.ORGANIZACE = %s', $organizace_filter);
@@ -154,35 +153,48 @@ public function getDataSource_DG(string $id_leku, $organizace_filter = null) {
         return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
     }
     
-    public function set_pojistovny_dg_edit($values){ 
+    // V LekyZjednoduseny.php - rozšiřte set_pojistovny_dg_edit
+public function set_pojistovny_dg_edit($values){ 
     error_log("=== MODEL SET_POJISTOVNY_DG_EDIT ===");
     error_log("INPUT VALUES: " . print_r($values, true));
     
-    $updateData = [
+    // ✅ Update DG tabulky
+    $updateDataDG = [
+        'DG_NAZEV' => $values['DG_NAZEV'] ?? null,
         'VILP' => isset($values['VILP']) ? (int)$values['VILP'] : 0,
         'DG_PLATNOST_OD' => $values['DG_PLATNOST_OD'] ?: null, 
         'DG_PLATNOST_DO' => $values['DG_PLATNOST_DO'] ?: null
     ];
     
-    error_log("UPDATE DATA: " . print_r($updateData, true));
+    $resultDG = $this->db->update(self::POJISTOVNY_DG, $updateDataDG)
+        ->where(
+            "ID_LEKY = %s AND ORGANIZACE = %s AND POJISTOVNA = %s AND DG_NAZEV = %s", 
+            $values['ID_LEKY'], 
+            $values['ORGANIZACE'],
+            $values['POJISTOVNA'], 
+            $values['DG_NAZEV']
+        )->execute();
     
-    try {
-        $result = $this->db->update(self::POJISTOVNY_DG, $updateData)
+    // ✅ Update pojišťovny tabulky pro 111_RL a 111_POZNAMKA
+    if ($values['POJISTOVNA'] == 111 && (isset($values['111_RL']) || isset($values['111_POZNAMKA']))) {
+        $updateDataPoj = [
+            'RL' => $values['111_RL'] ?? '',
+            'POZNAMKA' => $values['111_POZNAMKA'] ?? ''
+        ];
+        
+        $resultPoj = $this->db->update(self::POJISTOVNY, $updateDataPoj)
             ->where(
-                "ID_LEKY = %s AND ORGANIZACE = %s AND POJISTOVNA = %s AND DG_NAZEV = %s", 
+                "ID_LEKY = %s AND ORGANIZACE = %s AND POJISTOVNA = %s", 
                 $values['ID_LEKY'], 
                 $values['ORGANIZACE'],
-                $values['POJISTOVNA'], 
-                $values['DG_NAZEV']
+                $values['POJISTOVNA']
             )->execute();
             
-        error_log("DB UPDATE ROWS AFFECTED: " . $result->getRowCount()); // ✅ Opraveno
-        return $result->getRowCount(); // ✅ Vraťte počet ovlivněných řádků
-        
-    } catch (\Exception $e) {
-        error_log("MODEL UPDATE ERROR: " . $e->getMessage());
-        throw $e;
+        error_log("POJISTOVNY UPDATE RESULT: $resultPoj");
     }
+    
+    error_log("DG UPDATE RESULT: $resultDG");
+    return $resultDG;
 }
 
     public function unset_pojistovny_dg($values){
