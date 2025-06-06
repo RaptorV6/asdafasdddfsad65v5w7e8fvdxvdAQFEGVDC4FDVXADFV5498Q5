@@ -17,7 +17,7 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
         $grid->setStrictSessionFilterValues(false);
         $grid->setColumnsHideable();
         
-        $grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
+        //$grid->setDefaultSort(array('ID_LEKY' => 'DESC'));
 
         $grid->addColumnText('ORGANIZACE', 'Organizace')
              ->setSortable()

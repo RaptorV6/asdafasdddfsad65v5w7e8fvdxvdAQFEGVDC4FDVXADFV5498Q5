@@ -266,11 +266,17 @@ public function handleInlineEdit($id) {
 
 
 
-    protected function createComponentZjednoduseneForm(string $name) {
-        $form = new \Nette\Application\UI\Form($this, $name);
+   protected function createComponentZjednoduseneForm(string $name) {
+    $form = new \Nette\Application\UI\Form($this, $name);
+    
+    // ✅ OPRAVA: Kontrola existence parametru
+    $id_leky = $this->getParameter('ID_LEKY');
+    $lek = null;
+    
+    if ($id_leky) {
+        // Editace existujícího léku
+        $lek = $this->BaseModel->getLeky($id_leky);
         
-        $lek = $this->BaseModel->getLeky($this->getParameter('ID_LEKY'));
-
         if ($lek && isset($lek->ORGANIZACE)) {
             $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
         }
@@ -278,7 +284,7 @@ public function handleInlineEdit($id) {
         $values = '';
 
         foreach (self::ORGANIZACE_VISIBLE as $org) {
-            $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($this->getParameter('ID_LEKY'), $org));
+            $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($id_leky, $org));
             if (isset($lek->$org)) {
                 foreach ($lek->$org as $value => $key) {
                     if ($lek[$org][$value]['RL'] === '') {
@@ -289,7 +295,7 @@ public function handleInlineEdit($id) {
                     } else {
                         $lek[$org][$value]['Revizak'] = false;
                     }
-                    $lek[$org][$value]['DG'] = $this->BaseModel->getPojistovny_DG($this->getParameter('ID_LEKY'), $org, $value);
+                    $lek[$org][$value]['DG'] = $this->BaseModel->getPojistovny_DG($id_leky, $org, $value);
                     if (!in_array($value, $lek['POJ'])) {
                         $values = $values . ", " . $value;
                     }
@@ -299,23 +305,27 @@ public function handleInlineEdit($id) {
         if ($values) {
             $lek['POJ'] = explode(', ', trim($values, ", "));
         }
-
-        $this->FormFactory->setZjednoduseneForm($form);
-        $form->onError[] = function ($form) {
-            \App\LekyModule\Presenters\LekyPresenter::processFormErrors($form, $this);
-        };
-        if ($lek && !empty($lek->ORGANIZACE)) {
-            $lek->ORGANIZACE = array_filter($lek->ORGANIZACE);
-        }
-        $form->setDefaults($lek);
-        
-        $form->addGroup();
-        $form->addSubmit('send', 'Uložit')
-             ->setHtmlAttribute('class', 'btn btn-success button btn-block');
-        
-        $form->onSuccess[] = [$this, "zjednoduseneFormSucceeded"];
-        return $form;
+    } else {
+        // ✅ NOVÝ LÉK: Inicializace prázdných hodnot
+        $lek = [];
     }
+
+    $this->FormFactory->setZjednoduseneForm($form);
+    $form->onError[] = function ($form) {
+        \App\LekyModule\Presenters\LekyPresenter::processFormErrors($form, $this);
+    };
+    if ($lek && !empty($lek->ORGANIZACE)) {
+        $lek->ORGANIZACE = array_filter($lek->ORGANIZACE);
+    }
+    $form->setDefaults($lek);
+    
+    $form->addGroup();
+    $form->addSubmit('send', 'Uložit')
+         ->setHtmlAttribute('class', 'btn btn-success button btn-block');
+    
+    $form->onSuccess[] = [$this, "zjednoduseneFormSucceeded"];
+    return $form;
+}
 
     public function renderDefault() {
         $this->template->nadpis = 'zjednodušený přehled léků';
@@ -368,16 +378,12 @@ public function zjednoduseneFormSucceeded($form) {
     
     $editMode = $this->getAction() === 'edit';
     
+    // ✅ Generovat ID_LEKY z ATC pro nové léky
     if (!$editMode && empty($values->ID_LEKY) && !empty($values->ATC)) {
         $values->ID_LEKY = $values->ATC;
     }
     
-    if (empty($values->ID_LEKY)) {
-        $form->addError('ATC skupina musí být vyplněna - slouží jako identifikátor léku.');
-        return;
-    }
-    
-    // Doplň chybějící pole
+    // Doplň chybějící pole pro MERGE dotaz
     $values->DOP = $values->DOP ?? '';
     $values->SILA = $values->SILA ?? '';
     $values->BALENI = $values->BALENI ?? '';
@@ -398,20 +404,20 @@ public function zjednoduseneFormSucceeded($form) {
     
     $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
     
-    // ✅ UKLÁDÁNÍ POJIŠŤOVEN A DG
+    // ✅ UKLÁDÁNÍ POJIŠŤOVEN A DG (pro MUS organizaci)
     foreach (['MUS'] as $org) {
         foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojKey) {
             if (isset($values->$org) && isset($values->$org[$pojKey]) && $values->$org[$pojKey]->STAV) {
                 $pojData = $values->$org[$pojKey];
                 
-                // ✅ REVIZÁK
+                // Revizák
                 if (isset($pojData->Revizak) && $pojData->Revizak) {
                     $pojData->RL = $pojData->RL ?? '0';
                 } else {
                     $pojData->RL = '';
                 }
                 
-                // ✅ UKLÁDÁNÍ DG - BEZ DELETE, jen MERGE
+                // UKLÁDÁNÍ DG
                 if (isset($pojData->DG)) {
                     foreach ($pojData->DG as $dg) {
                         if (!empty($dg->DG_NAZEV)) {
@@ -423,35 +429,35 @@ public function zjednoduseneFormSucceeded($form) {
                     }
                 }
                 
-                // ✅ UKLÁDÁNÍ POJIŠŤOVNY
+                // UKLÁDÁNÍ POJIŠŤOVNY
                 $pojData->ORGANIZACE = $org;
                 $pojData->ID_LEKY = $values->ID_LEKY;
                 $pojData->POJISTOVNA = $pojKey;
-                $pojData->SMLOUVA = $this->setSmlouva($pojData->POJISTOVNA);
+                $pojData->SMLOUVA = 0; // Výchozí hodnota
                 $this->BaseModel->insert_edit_pojistovny($pojData);
             }
         }
     }
     
-    // ✅ ZÁKLADNÍ LÉK - jen pro nové
-    if (!$editMode) {
-        if (is_array($values->ORGANIZACE)) {
-            foreach ($values->ORGANIZACE as $key => $value) {
-                $tempValues = clone $values;
-                $tempValues->ORGANIZACE = $value;
-                $this->BaseModel->insertLeky($tempValues);
-            }
-        } else {
-            $this->BaseModel->insertLeky($values);
+    // ✅ ZÁKLADNÍ LÉK
+    if (is_array($values->ORGANIZACE)) {
+        foreach ($values->ORGANIZACE as $key => $value) {
+            $tempValues = clone $values;
+            $tempValues->ORGANIZACE = $value;
+            $this->BaseModel->insertLeky($tempValues);
         }
-        $this->flashMessage('Lék byl přidán.', "success");
     } else {
+        $this->BaseModel->insertLeky($values);
+    }
+    
+    if ($editMode) {
         $this->flashMessage('Lék byl upraven.', "success");
+    } else {
+        $this->flashMessage('Lék byl přidán.', "success");
     }
     
     $this->redirect("default");
 }
-
 
 
 // ✅ PŘIDEJ METODU setSmlouva 

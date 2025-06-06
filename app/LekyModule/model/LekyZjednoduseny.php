@@ -12,65 +12,66 @@ class LekyZjednoduseny extends \App\Model\AModel {
           AKESO_LEKY = "AKESO_LEKY";
 
 
-    public function getDataSourceZjednodusene($organizace = null, $history = null) {
-        $select = $this->db->select("*")->from(self::LEKY_VIEW);
-        
-        if ($organizace) {
-            $select->where("ORGANIZACE = %s", $organizace);
-        }
-
-        if (!$history) {
-            $select->where("AKORD = 0");
-        }
-
-        return $select;
+  public function getDataSourceZjednodusene($organizace = null, $history = null) {
+    $select = $this->db->select("*")->from(self::LEKY_VIEW)
+        ->orderBy('ID_LEKY COLLATE Czech_CI_AS'); // ✅ Explicitně Czech collation
+    
+    if ($organizace) {
+        $select->where("ORGANIZACE = %s", $organizace);
     }
 
- 
-    public function getDataSourceGrouped($organizace = null, $history = null) {
-        $select = $this->db->query('
-            SELECT 
-                CASE
-                    WHEN COUNT(*) > 1
-                    THEN NAZ + \' (\' + CAST(COUNT(*) AS VARCHAR) + \'x)\'
-                    ELSE NAZ
-                END as NAZ,
-                ORGANIZACE,
-                MAX(POZNAMKA) as POZNAMKA,
-                MAX(UCINNA_LATKA) as UCINNA_LATKA,
-                MAX(BIOSIMOLAR) as BIOSIMOLAR,
-                MAX(ATC) as ATC,
-                COUNT(*) as VARIANT_COUNT,
-                MIN(ID_LEKY) as ID_LEKY,
-                
-                MAX([111_STAV]) as [111_STAV],
-                MAX([111_NASMLOUVANO_OD]) as [111_NASMLOUVANO_OD],
-                MAX([111_POZNAMKA]) as [111_POZNAMKA],
-                MAX(poj111_BARVA) as poj111_BARVA,
-                
-                MAX([201_STAV]) as [201_STAV],
-                MAX([201_NASMLOUVANO_OD]) as [201_NASMLOUVANO_OD],
-                MAX([201_POZNAMKA]) as [201_POZNAMKA],
-                MAX(poj201_BARVA) as poj201_BARVA,
-                
-                MAX([205_STAV]) as [205_STAV],
-                MAX(poj205_BARVA) as poj205_BARVA,
-                MAX([207_STAV]) as [207_STAV],
-                MAX(poj207_BARVA) as poj207_BARVA,
-                MAX([209_STAV]) as [209_STAV],
-                MAX(poj209_BARVA) as poj209_BARVA,
-                MAX([211_STAV]) as [211_STAV],
-                MAX(poj211_BARVA) as poj211_BARVA,
-                MAX([213_STAV]) as [213_STAV],
-                MAX(poj213_BARVA) as poj213_BARVA
-                
-            FROM %n 
-            WHERE AKORD = 0 %if', self::LEKY_VIEW, $organizace, 'AND ORGANIZACE = %s %end', $organizace, '
-            GROUP BY NAZ, ORGANIZACE
-        ');
-        
-        return $select->fetchAll();
+    if (!$history) {
+        $select->where("AKORD = 0");
     }
+
+    return $select;
+}
+
+public function getDataSourceGrouped($organizace = null, $history = null) {
+    $select = $this->db->query('
+        SELECT 
+            CASE
+                WHEN COUNT(*) > 1
+                THEN NAZ + \' (\' + CAST(COUNT(*) AS VARCHAR) + \'x)\'
+                ELSE NAZ
+            END as NAZ,
+            ORGANIZACE,
+            MAX(POZNAMKA) as POZNAMKA,
+            MAX(UCINNA_LATKA) as UCINNA_LATKA,
+            MAX(BIOSIMOLAR) as BIOSIMOLAR,
+            MAX(ATC) as ATC,
+            COUNT(*) as VARIANT_COUNT,
+            MIN(ID_LEKY) as ID_LEKY,
+            
+            MAX([111_STAV]) as [111_STAV],
+            MAX([111_NASMLOUVANO_OD]) as [111_NASMLOUVANO_OD],
+            MAX([111_POZNAMKA]) as [111_POZNAMKA],
+            MAX(poj111_BARVA) as poj111_BARVA,
+            
+            MAX([201_STAV]) as [201_STAV],
+            MAX([201_NASMLOUVANO_OD]) as [201_NASMLOUVANO_OD],
+            MAX([201_POZNAMKA]) as [201_POZNAMKA],
+            MAX(poj201_BARVA) as poj201_BARVA,
+            
+            MAX([205_STAV]) as [205_STAV],
+            MAX(poj205_BARVA) as poj205_BARVA,
+            MAX([207_STAV]) as [207_STAV],
+            MAX(poj207_BARVA) as poj207_BARVA,
+            MAX([209_STAV]) as [209_STAV],
+            MAX(poj209_BARVA) as poj209_BARVA,
+            MAX([211_STAV]) as [211_STAV],
+            MAX(poj211_BARVA) as poj211_BARVA,
+            MAX([213_STAV]) as [213_STAV],
+            MAX(poj213_BARVA) as poj213_BARVA
+            
+        FROM %n 
+        WHERE AKORD = 0 %if', self::LEKY_VIEW, $organizace, 'AND ORGANIZACE = %s %end', $organizace, '
+        GROUP BY NAZ, ORGANIZACE
+        ORDER BY MIN(ID_LEKY) COLLATE Czech_CI_AS DESC  -- ✅ Nejnovější nahoře
+    ');
+    
+    return $select->fetchAll();
+}
 
 public function getDataSource_DG($id_leku, $organizace_filter = null) {
     $query = $this->db->select('
@@ -104,21 +105,27 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
         return $this->getDataSourceZjednodusene($organizace, $history);
     }
 
-    public function getLeky($id) {
-        return $this->db->select("*")
-                        ->from(self::LEKY_EDIT)
-                        ->where('ID_LEKY = %s', $id)
-                        ->orderBy('ID_LEKY')
-                        ->fetch();
+   public function getLeky($id) {
+    if (!$id) {
+        return null;
     }
+    return $this->db->select("*")
+                    ->from(self::LEKY_EDIT)
+                    ->where('ID_LEKY = %s', $id)
+                    ->orderBy('ID_LEKY')
+                    ->fetch();
+}
 
-    public function getPojistovny($id, $org) {
-        return $this->db->select("*")
-                        ->from(self::POJISTOVNY)
-                        ->where('ID_LEKY = %s and ORGANIZACE = %s', $id, $org)
-                        ->orderBy('ID_LEKY')
-                        ->fetchAssoc('POJISTOVNA');
+public function getPojistovny($id, $org) {
+    if (!$id) {
+        return [];
     }
+    return $this->db->select("*")
+                    ->from(self::POJISTOVNY)
+                    ->where('ID_LEKY = %s and ORGANIZACE = %s', $id, $org)
+                    ->orderBy('ID_LEKY')
+                    ->fetchAssoc('POJISTOVNA');
+}
 
     public function getPojistovny_DG($id, $org, $poj) {
         return $this->db->select("*")
