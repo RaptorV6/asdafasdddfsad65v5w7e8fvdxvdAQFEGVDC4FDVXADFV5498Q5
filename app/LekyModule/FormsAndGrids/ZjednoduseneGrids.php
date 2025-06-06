@@ -263,40 +263,41 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY) {
                       ->setNullable();
         };
 
-    $grid->addInlineEdit()
-        ->onControlAdd[] = function(Container $container): void {
-            $container->addText("LEK_NAZEV", "Lék")
-                      ->setHtmlAttribute('readonly');
-                
-            $container->addText("DG_NAZEV", "DG Název")
-                      ->setNullable();
-        
-            $container->addSelect('111_RL', '111 - Revizní lékař')
-                      ->setItems([
-                          '' => 'Ne',
-                          '0' => 'povolení RL- žádanka §16', 
-                          '1' => 'epikríza/info pro RL'
-                      ]);
+    // V app/LekyModule/FormsAndGrids/ZjednoduseneGrids.php - zkontroluj, že máš správné názvy polí
+$grid->addInlineEdit()
+    ->onControlAdd[] = function(Container $container): void {
+        $container->addText("LEK_NAZEV", "Lék")
+                  ->setHtmlAttribute('readonly');
+            
+        $container->addText("DG_NAZEV", "DG Název") // ✅ Editovatelné
+                  ->setNullable();
+    
+        $container->addSelect('111_RL', '111 - Revizní lékař') // ✅ Editovatelné
+                  ->setItems([
+                      '' => 'Ne',
+                      '0' => 'povolení RL- žádanka §16', 
+                      '1' => 'epikríza/info pro RL'
+                  ]);
 
-            $container->addText('111_POZNAMKA', '111 - Poznámka')
-                      ->setNullable();
+        $container->addText('111_POZNAMKA', '111 - Poznámka') // ✅ Editovatelné
+                  ->setNullable();
 
-            $container->addCheckbox('VILP', 'VILP')
-                      ->setHtmlAttribute('class', 'checkbox_style');
+        $container->addCheckbox('VILP', 'VILP')
+                  ->setHtmlAttribute('class', 'checkbox_style');
 
-            $container->addText('DG_PLATNOST_OD','Platnost od')
-                      ->setHtmlType('date')
-                      ->setNullable();
+        $container->addText('DG_PLATNOST_OD','Platnost od')
+                  ->setHtmlType('date')
+                  ->setNullable();
 
-            $container->addText('DG_PLATNOST_DO','Platnost do')
-                      ->setHtmlType('date')
-                      ->setNullable();
-                      
-            // ✅ Hidden fieldy pro identifikaci
-            $container->addHidden('ID_LEKY');
-            $container->addHidden('ORGANIZACE');
-            $container->addHidden('POJISTOVNA');
-        };
+        $container->addText('DG_PLATNOST_DO','Platnost do')
+                  ->setHtmlType('date')
+                  ->setNullable();
+                  
+        // Hidden fieldy pro identifikaci
+        $container->addHidden('ID_LEKY');
+        $container->addHidden('ORGANIZACE'); 
+        $container->addHidden('POJISTOVNA');
+    };
 
     $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
         $PLATNOST_OD = $item['DG_PLATNOST_OD'] !== null ? \DateTime::createFromFormat('d.m.Y', $item['DG_PLATNOST_OD'])->format('Y-m-d') : NULL;

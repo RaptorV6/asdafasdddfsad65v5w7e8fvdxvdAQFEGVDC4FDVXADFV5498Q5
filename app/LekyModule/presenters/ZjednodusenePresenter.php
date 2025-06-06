@@ -96,33 +96,30 @@ public function createComponentDGDataGrid(string $name): Multiplier{
     });
 }
 
+// V app/LekyModule/presenters/ZjednodusenePresenter.php - oprav processSignal metodu
 public function processSignal(): void {
     error_log("=== PROCESS SIGNAL CALLED ===");
     $signal = $this->getSignal();
     error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
     error_log("POST: " . print_r($_POST, true));
     
-    // ✅ OPRAVENÁ podmínka - zachytí filter submit s inline_edit daty
     if ($signal && is_array($signal) && count($signal) >= 2 && 
         strpos($signal[0], 'dGDataGrid-') === 0 && 
-        $signal[1] === 'submit' &&  // ✅ změněno z 'inlineEdit' na 'submit'
+        $signal[1] === 'submit' &&
         isset($_POST['inline_edit'])) {
         
         error_log("=== PROCESSING INLINE EDIT ===");
         $inlineData = $_POST['inline_edit'];
         error_log("INLINE EDIT RAW DATA: " . print_r($inlineData, true));
         
-        // ✅ Najít původní záznam podle _id
         $id = $inlineData['_id'] ?? null;
         if ($id) {
-            // ✅ Získat ID_LEKY z signálu (odstranit -filter část)
             preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
             $ID_LEKY = $matches[1] ?? null;
             
             error_log("EXTRACTED ID_LEKY: $ID_LEKY");
             
             if ($ID_LEKY) {
-                // ✅ Najít původní záznam
                 $originalRecords = $this->BaseModel->getDataSource_DG($ID_LEKY);
                 $targetRow = null;
                 foreach ($originalRecords as $row) {
@@ -135,12 +132,15 @@ public function processSignal(): void {
                 error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
                 
                 if ($targetRow) {
-                    // ✅ Sestavit data pro update
+                    // ✅ OPRAVENO - čti data z inline formuláře
                     $editValues = [
                         'ID_LEKY' => $targetRow->ID_LEKY,
                         'ORGANIZACE' => $targetRow->ORGANIZACE,
                         'POJISTOVNA' => $targetRow->POJISTOVNA,
-                        'DG_NAZEV' => $targetRow->DG_NAZEV,
+                        'ORIGINAL_DG_NAZEV' => $targetRow->DG_NAZEV, // Zachovej původní pro WHERE
+                        'DG_NAZEV' => $inlineData['DG_NAZEV'] ?? $targetRow->DG_NAZEV, // ✅ Z formuláře
+                        '111_RL' => $inlineData['111_RL'] ?? '', // ✅ Z formuláře
+                        '111_POZNAMKA' => $inlineData['111_POZNAMKA'] ?? '', // ✅ Z formuláře
                         'VILP' => isset($inlineData['VILP']) && $inlineData['VILP'] === 'on' ? 1 : 0,
                         'DG_PLATNOST_OD' => $inlineData['DG_PLATNOST_OD'] ?? null,
                         'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?? null,
@@ -149,28 +149,26 @@ public function processSignal(): void {
                     error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
                     
                     try {
-                      $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
-error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED')); // ✅ Opraveno
-
-// ✅ JEDNODUŠE - vždy success pokud nedojde k výjimce
-$this->flashMessage("Editace proběhla v pořádku", 'success');
-
-$this->redirect('this');
-                        return; // Zastaví další zpracování
+                        $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
+                        // ✅ OPRAVENO - boolean test
+                        error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
+                        
+                        if ($result) {
+                            $this->flashMessage("Editace proběhla v pořádku", 'success');
+                        } else {
+                            $this->flashMessage("Žádné změny nebyly provedeny", 'warning');
+                        }
+                        
+                        $this->redirect('this');
+                        return;
                     } catch (\Exception $e) {
                         error_log("UPDATE ERROR: " . $e->getMessage());
                         $this->flashMessage("Chyba při editaci: " . $e->getMessage(), 'error');
                         $this->redirect('this');
                         return;
                     }
-                } else {
-                    error_log("TARGET ROW NOT FOUND FOR ID: $id");
                 }
-            } else {
-                error_log("ID_LEKY NOT EXTRACTED FROM SIGNAL");
             }
-        } else {
-            error_log("NO _id IN INLINE DATA");
         }
     }
     

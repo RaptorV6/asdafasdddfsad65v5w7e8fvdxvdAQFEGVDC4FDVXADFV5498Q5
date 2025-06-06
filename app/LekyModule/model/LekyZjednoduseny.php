@@ -153,10 +153,18 @@ public function getDataSource_DG($id_leku, $organizace_filter = null) {
         return $this->db->insert(self::POJISTOVNY_DG, $values)->execute(); 
     }
     
-    // V LekyZjednoduseny.php - rozšiřte set_pojistovny_dg_edit
+// V app/LekyModule/model/LekyZjednoduseny.php - oprav metodu set_pojistovny_dg_edit
 public function set_pojistovny_dg_edit($values){ 
     error_log("=== MODEL SET_POJISTOVNY_DG_EDIT ===");
     error_log("INPUT VALUES: " . print_r($values, true));
+    
+    // ✅ Sestavit původní WHERE podmínku PŘED změnami
+    $originalValues = [
+        'ID_LEKY' => $values['ID_LEKY'],
+        'ORGANIZACE' => $values['ORGANIZACE'],
+        'POJISTOVNA' => $values['POJISTOVNA'],
+        'DG_NAZEV' => $values['ORIGINAL_DG_NAZEV'] ?? $values['DG_NAZEV'] // Použij původní název
+    ];
     
     // ✅ Update DG tabulky
     $updateDataDG = [
@@ -169,10 +177,10 @@ public function set_pojistovny_dg_edit($values){
     $resultDG = $this->db->update(self::POJISTOVNY_DG, $updateDataDG)
         ->where(
             "ID_LEKY = %s AND ORGANIZACE = %s AND POJISTOVNA = %s AND DG_NAZEV = %s", 
-            $values['ID_LEKY'], 
-            $values['ORGANIZACE'],
-            $values['POJISTOVNA'], 
-            $values['DG_NAZEV']
+            $originalValues['ID_LEKY'], 
+            $originalValues['ORGANIZACE'],
+            $originalValues['POJISTOVNA'], 
+            $originalValues['DG_NAZEV']
         )->execute();
     
     // ✅ Update pojišťovny tabulky pro 111_RL a 111_POZNAMKA
@@ -190,11 +198,13 @@ public function set_pojistovny_dg_edit($values){
                 $values['POJISTOVNA']
             )->execute();
             
-        error_log("POJISTOVNY UPDATE RESULT: $resultPoj");
+        // ✅ OPRAVENO - getRowCount() místo objektu
+        error_log("POJISTOVNY UPDATE RESULT: " . $resultPoj->getRowCount());
     }
     
-    error_log("DG UPDATE RESULT: $resultDG");
-    return $resultDG;
+    // ✅ OPRAVENO - getRowCount() místo objektu
+    error_log("DG UPDATE RESULT: " . $resultDG->getRowCount());
+    return $resultDG->getRowCount() > 0; // Vrať boolean
 }
 
     public function unset_pojistovny_dg($values){
