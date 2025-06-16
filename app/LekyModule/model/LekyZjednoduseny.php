@@ -13,8 +13,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
 
 
   public function getDataSourceZjednodusene($organizace = null, $history = null) {
-    $select = $this->db->select("*")->from(self::LEKY_VIEW)
-        ->orderBy('ID_LEKY COLLATE Czech_CI_AS'); // ✅ Explicitně Czech collation
+    $select = $this->db->select("*")->from(self::LEKY_VIEW);
     
     if ($organizace) {
         $select->where("ORGANIZACE = %s", $organizace);
@@ -29,7 +28,7 @@ class LekyZjednoduseny extends \App\Model\AModel {
 
 public function getDataSourceGrouped($organizace = null, $history = null) {
     $select = $this->db->query('
-        SELECT 
+        SELECT TOP 100 PERCENT
             CASE
                 WHEN COUNT(*) > 1
                 THEN NAZ + \' (\' + CAST(COUNT(*) AS VARCHAR) + \'x)\'
