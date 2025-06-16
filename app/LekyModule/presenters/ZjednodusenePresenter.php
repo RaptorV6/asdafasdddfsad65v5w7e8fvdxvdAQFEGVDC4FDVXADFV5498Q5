@@ -162,7 +162,7 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
         } catch (\Exception $e) {
             ////error_log("INLINE ADD ERROR: " . $e->getMessage());
             ////error_log("INLINE ADD TRACE: " . $e->getTraceAsString());
-            $this->flashMessage("Chyba při přidávání DG skupiny: " . $e->getMessage(), 'error');
+            //$this->flashMessage("Chyba při přidávání DG skupiny: " . $e->getMessage(), 'error');
             $this->redirect('this');
             return;
         }
@@ -232,7 +232,7 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                         return;
                     } catch (\Exception $e) {
                         //error_log("UPDATE ERROR: " . $e->getMessage());
-                        $this->flashMessage("Chyba při editaci: " . $e->getMessage(), 'error');
+                        //$this->flashMessage("Chyba při editaci: " . $e->getMessage(), 'error');
                         $this->redirect('this');
                         return;
                     }
