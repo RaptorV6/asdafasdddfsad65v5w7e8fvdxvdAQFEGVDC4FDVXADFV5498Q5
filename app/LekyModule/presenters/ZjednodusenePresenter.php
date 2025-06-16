@@ -268,28 +268,27 @@ public function handleInlineEdit($id) {
     if ($id_leky) {
         $lek = $this->BaseModel->getLeky($id_leky);
         
-        if ($lek && isset($lek->ORGANIZACE)) {
-            $lek->ORGANIZACE = explode(", ", $lek->ORGANIZACE);
-        }
+        // Pro zjednodušenou verzi je organizace vždy 'MUS'
+        $lek->ORGANIZACE = 'MUS'; 
+        
         $lek['POJ'] = [];
         $values = '';
 
-        foreach (self::ORGANIZACE_VISIBLE as $org) {
-            $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($id_leky, $org));
-            if (isset($lek->$org)) {
-                foreach ($lek->$org as $value => $key) {
-                    if ($lek[$org][$value]['RL'] === '') {
-                        $lek[$org][$value]['RL'] = '';
-                    } elseif ($lek[$org][$value]['RL'] == 1 || $lek[$org][$value]['RL'] == 0) {
-                        $lek[$org][$value]['RL'] = (string)$lek[$org][$value]['RL'];
-                        $lek[$org][$value]['Revizak'] = true;
-                    } else {
-                        $lek[$org][$value]['Revizak'] = false;
-                    }
-                    $lek[$org][$value]['DG'] = $this->BaseModel->getPojistovny_DG($id_leky, $org, $value);
-                    if (!in_array($value, $lek['POJ'])) {
-                        $values = $values . ", " . $value;
-                    }
+        $org = 'MUS';
+        $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($id_leky, $org));
+        if (isset($lek->$org)) {
+            foreach ($lek->$org as $value => $key) {
+                if ($lek[$org][$value]['RL'] === '') {
+                    $lek[$org][$value]['RL'] = '';
+                } elseif ($lek[$org][$value]['RL'] == 1 || $lek[$org][$value]['RL'] == 0) {
+                    $lek[$org][$value]['RL'] = (string)$lek[$org][$value]['RL'];
+                    $lek[$org][$value]['Revizak'] = true;
+                } else {
+                    $lek[$org][$value]['Revizak'] = false;
+                }
+                $lek[$org][$value]['DG'] = $this->BaseModel->getPojistovny_DG($id_leky, $org, $value);
+                if (!in_array($value, $lek['POJ'])) {
+                    $values = $values . ", " . $value;
                 }
             }
         }
@@ -304,9 +303,6 @@ public function handleInlineEdit($id) {
     $form->onError[] = function ($form) {
         \App\LekyModule\Presenters\LekyPresenter::processFormErrors($form, $this);
     };
-    if ($lek && !empty($lek->ORGANIZACE)) {
-        $lek->ORGANIZACE = array_filter($lek->ORGANIZACE);
-    }
     $form->setDefaults($lek);
     
     $form->addGroup();
@@ -322,40 +318,16 @@ public function handleInlineEdit($id) {
     }
 
     public function renderNew() {
-        $session = $this->getComponent('zjednoduseneDataGrid');
         $savedata = $this->getComponent('zjednoduseneForm');
         
-        if ($this->user->getIdentity()->preferovana_organizace !== null && $session->getSessionData('ORGANIZACE') === null) {
-            $defaultHodnoty = array_intersect(explode(', ', $this->user->getIdentity()->preferovana_organizace), self::ORGANIZACE_VISIBLE);
-        } else {
-            $defaultHodnoty = $session->getSessionData('ORGANIZACE');
-        }
-        
-        $savedata->setDefaults(array('ORGANIZACE' => $defaultHodnoty));
+        // Pro zjednodušenou verzi je organizace vždy 'MUS'
+        $savedata->setDefaults(array('ORGANIZACE' => 'MUS'));
         $this->template->nadpis = 'přidání nového léku - zjednodušené';
         $this->setView('edit');
     }
 
     public function renderEdit() {
         $this->template->nadpis = 'editace léku - zjednodušené';
-    }
-
-    public function renderHromad($id) {
-        $idparametr = explode(",", $this->getParameter('id'));
-        $idparametr = preg_replace("/[^a-zA-Z 0-9]+/", "", $idparametr);
-        $this->template->nadpis = 'hromadná změna stavu pojišťoven';
-        $this->template->id = implode(',', $idparametr);
-        $this->template->pojistovny = self::POJISTOVNY;
-        $this->template->organizace = self::ORGANIZACE_VISIBLE;
-    }
-
-    public function renderHromadiag($id) {
-        $idparametr = explode(",", $this->getParameter('id'));
-        $idparametr = preg_replace("/[^a-zA-Z 0-9]+/", "", $idparametr);
-        $this->template->nadpis = 'hromadná změna diagnostické skupiny';
-        $this->template->id = implode(',', $idparametr);
-        $this->template->pojistovny = self::POJISTOVNY;
-        $this->template->organizace = self::ORGANIZACE_VISIBLE;
     }
 
     public function actionWeb($ID_LEKY) {
@@ -426,15 +398,9 @@ public function zjednoduseneFormSucceeded($form) {
         }
     }
     
-    if (is_array($values->ORGANIZACE)) {
-        foreach ($values->ORGANIZACE as $key => $value) {
-            $tempValues = clone $values;
-            $tempValues->ORGANIZACE = $value;
-            $this->BaseModel->insertLeky($tempValues);
-        }
-    } else {
-        $this->BaseModel->insertLeky($values);
-    }
+    // Pro zjednodušenou verzi je organizace vždy 'MUS'
+    $values->ORGANIZACE = 'MUS';
+    $this->BaseModel->insertLeky($values);
     
     if ($editMode) {
         $this->flashMessage('Lék byl upraven.', "success");
@@ -467,50 +433,4 @@ private function setSmlouva($poj, $smlouva = null) {
         $this->sendResponse(new \Nette\Application\Responses\JsonResponse($fristHalfItems));
     }
 
-    protected function createComponentHromadForm(string $name) {
-        $form = new \Nette\Application\UI\Form($this, $name);
-        $form->addHidden('ID')
-             ->setRequired('Musí být zadaný "%label"');
-             
-        $form->addMultiSelect('ORGANIZACE', 'Organizace')
-             ->setHtmlAttribute('class', 'multiselect')
-             ->setItems(self::ORGANIZACE)
-             ->setRequired('Musí být zadaný "%label"');
-
-        $form->addMultiSelect('POJ', 'Pojišťovny')
-             ->setHtmlAttribute('class', 'multiselect')
-             ->setItems(self::POJISTOVNY)
-             ->setRequired('Musí být zadaný "%label"');
-
-        $value['ID'] = $this->getParameter('id');
-        $form->setDefaults($value);
-        $form->addGroup();
-        $form->addSubmit('send', 'Uložit')
-             ->setHtmlAttribute('class ', 'btn btn-success button btn-block');
-        $form->onSuccess[] = [$this, "hromadFormSucceeded"];
-        return $form;
-    }
-
-    protected function createComponentHromadiagForm(string $name) {
-        $form = new \Nette\Application\UI\Form($this, $name);
-        $this->FormFactory->setHromadDiagForm($form);
-
-        $value['ID'] = $this->getParameter('id');
-        $form->setDefaults($value);
-        $form->addGroup();
-        $form->addSubmit('send', 'Uložit')
-             ->setHtmlAttribute('class ', 'btn btn-success button btn-block');
-        $form->onSuccess[] = [$this, "hromadDiagFormSucceeded"];
-        return $form;
-    }
-
-    public function hromadFormSucceeded($form) {
-        $this->flashMessage('Záznamy byly upraveny.', "success");
-        $this->redirect('default');
-    }
-
-    public function hromadDiagFormSucceeded($form) {
-        $this->flashMessage('Záznamy byly upraveny.', "success");
-        $this->redirect('default');
-    }
 }
