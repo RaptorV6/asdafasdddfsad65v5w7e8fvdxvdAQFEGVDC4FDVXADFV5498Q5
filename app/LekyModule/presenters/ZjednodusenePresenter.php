@@ -6,6 +6,7 @@ use Nette\Application\UI\Multiplier;
 use Ublaboo\DataGrid\DataGrid;
 use App\LekyModule\Model\LekyZjednoduseny;
 use Ublaboo\DataGrid\AkesoGrid;
+use App\LekyModule\Grids\CustomDataGrid;
 
 class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
 
@@ -71,34 +72,28 @@ class ZjednodusenePresenter extends \App\Presenters\SecurePresenter {
 
 // V app/LekyModule/presenters/ZjednodusenePresenter.php
 public function createComponentDGDataGrid(string $name): Multiplier{
-    ////error_log("=== CREATING DG DATA GRID ===");
+    error_log("=== CREATING DG DATA GRID ===");
     
     return new Multiplier(function ($ID_LEKY) {
-        ////error_log("=== MULTIPLIER CALLBACK FOR ID_LEKY: $ID_LEKY ===");
+        error_log("=== MULTIPLIER CALLBACK FOR ID_LEKY: $ID_LEKY ===");
 
-        $grid = new DataGrid(null, $ID_LEKY);
-        ////error_log("=== GRID CREATED ===");
+        // ✅ POUŽIJ CUSTOM DATAGRID
+        $grid = new CustomDataGrid(null, $ID_LEKY);
         
         $this->GridFactory->setDGGrid($grid, $ID_LEKY, $this);
-        ////error_log("=== GRID FACTORY SET ===");
-        
         $grid->setDataSource($this->BaseModel->getDataSource_DG($ID_LEKY));
-        ////error_log("=== DATA SOURCE SET ===");
         
-        // $grid->BaseModel = $this->BaseModel;
-        // $grid->db = $this->BaseModel->db;
-        
-        ////error_log("=== RETURNING GRID ===");
         return $grid;
     });
 }
 
 // V app/LekyModule/presenters/ZjednodusenePresenter.php - rozšiř processSignal metodu
 public function processSignal(): void {
-    ////error_log("=== PROCESS SIGNAL CALLED ===");
+    error_log("=== PROCESS SIGNAL CALLED ===");
     $signal = $this->getSignal();
-    ////error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
-    ////error_log("POST: " . print_r($_POST, true));
+    error_log("SIGNAL: " . ($signal ? print_r($signal, true) : 'NULL'));
+    error_log("POST: " . print_r($_POST, true));
+    error_log("GET: " . print_r($_GET, true));
     
    // V app/LekyModule/presenters/ZjednodusenePresenter.php - uprav inline add část
 if ($signal && is_array($signal) && count($signal) >= 2 && 
@@ -106,16 +101,22 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     $signal[1] === 'submit' &&
     isset($_POST['inline_add'])) {
     
-    ////error_log("=== PROCESSING INLINE ADD ===");
+    error_log("=== PROCESSING INLINE ADD ===");
     $inlineData = $_POST['inline_add'];
-    ////error_log("INLINE ADD RAW DATA: " . print_r($inlineData, true));
+    error_log("INLINE ADD RAW DATA: " . print_r($inlineData, true));
     
+    if ($inlineData && empty($inlineData['DG_NAZEV'])) {
+        $this->flashMessage("DG Název je povinný", 'error');
+        $this->redirect('this');
+        return;
+    }
+
     preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
     $ID_LEKY = $matches[1] ?? null;
     
-    ////error_log("EXTRACTED ID_LEKY: $ID_LEKY");
+    error_log("EXTRACTED ID_LEKY: $ID_LEKY");
     
-    if ($ID_LEKY && !empty($inlineData['DG_NAZEV'])) {
+    if ($ID_LEKY) {
         try {
             $dgData = (object)[
                 'ID_LEKY' => $ID_LEKY,
@@ -127,10 +128,10 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                 'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?: null,
             ];
             
-            ////error_log("FINAL ADD VALUES: " . print_r($dgData, true));
+            error_log("FINAL ADD VALUES: " . print_r($dgData, true));
             
             $result = $this->BaseModel->insert_edit_pojistovny_dg($dgData);
-            ////error_log("ADD DG RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
+            error_log("ADD DG RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
             
             if ($inlineData['111_RL'] || $inlineData['111_POZNAMKA']) {
                 $pojData = (object)[
@@ -144,13 +145,13 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                     'NASMLOUVANO_OD' => null,
                 ];
                 
-                ////error_log("POJISTOVNA DATA: " . print_r($pojData, true));
+                error_log("POJISTOVNA DATA: " . print_r($pojData, true));
                 
                 try {
                     $this->BaseModel->insert_edit_pojistovny($pojData);
-                    ////error_log("ADD POJISTOVNA RESULT: SUCCESS");
+                    error_log("ADD POJISTOVNA RESULT: SUCCESS");
                 } catch (\Exception $pojException) {
-                    ////error_log("POJISTOVNA INSERT ERROR: " . $pojException->getMessage());
+                    error_log("POJISTOVNA INSERT ERROR: " . $pojException->getMessage());
                     // Pokračuj i při chybě pojišťovny
                 }
             }
@@ -160,15 +161,15 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
             return;
             
         } catch (\Exception $e) {
-            ////error_log("INLINE ADD ERROR: " . $e->getMessage());
-            ////error_log("INLINE ADD TRACE: " . $e->getTraceAsString());
+            error_log("INLINE ADD ERROR: " . $e->getMessage());
+            error_log("INLINE ADD TRACE: " . $e->getTraceAsString());
             //$this->flashMessage("Chyba při přidávání DG skupiny: " . $e->getMessage(), 'error');
             $this->redirect('this');
             return;
         }
     } else {
-        ////error_log("MISSING DATA: ID_LEKY=$ID_LEKY, DG_NAZEV=" . ($inlineData['DG_NAZEV'] ?? 'EMPTY'));
-        $this->flashMessage("Chybí povinné údaje pro přidání DG skupiny", 'error');
+        error_log("MISSING ID_LEKY: ID_LEKY=$ID_LEKY");
+        $this->flashMessage("Chybí ID léku pro přidání DG skupiny", 'error');
         $this->redirect('this');
         return;
     }
@@ -179,16 +180,16 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
         $signal[1] === 'submit' &&
         isset($_POST['inline_edit'])) {
         
-        ////error_log("=== PROCESSING INLINE EDIT ===");
+        error_log("=== PROCESSING INLINE EDIT ===");
         $inlineData = $_POST['inline_edit'];
-        ////error_log("INLINE EDIT RAW DATA: " . print_r($inlineData, true));
+        error_log("INLINE EDIT RAW DATA: " . print_r($inlineData, true));
         
         $id = $inlineData['_id'] ?? null;
         if ($id) {
             preg_match('/dGDataGrid-(.+)-filter/', $signal[0], $matches);
             $ID_LEKY = $matches[1] ?? null;
             
-            ////error_log("EXTRACTED ID_LEKY: $ID_LEKY");
+            error_log("EXTRACTED ID_LEKY: $ID_LEKY");
             
             if ($ID_LEKY) {
                 $originalRecords = $this->BaseModel->getDataSource_DG($ID_LEKY);
@@ -200,7 +201,7 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                     }
                 }
                 
-                //error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
+                error_log("TARGET ROW: " . ($targetRow ? print_r($targetRow, true) : 'NOT FOUND'));
                 
                 if ($targetRow) {
                     $editValues = [
@@ -216,11 +217,11 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                         'DG_PLATNOST_DO' => $inlineData['DG_PLATNOST_DO'] ?? null,
                     ];
                     
-                    //error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
+                    error_log("FINAL UPDATE VALUES: " . print_r($editValues, true));
                     
                     try {
                         $result = $this->BaseModel->set_pojistovny_dg_edit($editValues);
-                        //error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
+                        error_log("UPDATE RESULT: " . ($result ? 'SUCCESS' : 'FAILED'));
                         
                         if ($result) {
                             $this->flashMessage("Editace proběhla v pořádku", 'success');
@@ -231,7 +232,7 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
                         $this->redirect('this');
                         return;
                     } catch (\Exception $e) {
-                        //error_log("UPDATE ERROR: " . $e->getMessage());
+                        error_log("UPDATE ERROR: " . $e->getMessage());
                         //$this->flashMessage("Chyba při editaci: " . $e->getMessage(), 'error');
                         $this->redirect('this');
                         return;
@@ -244,7 +245,8 @@ if ($signal && is_array($signal) && count($signal) >= 2 &&
     try {
         parent::processSignal();
     } catch (\Exception $e) {
-        //error_log("SIGNAL ERROR: " . $e->getMessage());
+        error_log("SIGNAL ERROR: " . $e->getMessage());
+        error_log("SIGNAL TRACE: " . $e->getTraceAsString());
         throw $e;
     }
 }
@@ -263,21 +265,21 @@ public function handleInlineEdit($id) {
     $form = new \Nette\Application\UI\Form($this, $name);
     
     $id_leky = $this->getParameter('ID_LEKY');
-    $lek = null;
+        $lek = null;
     
     if ($id_leky) {
         $lek = $this->BaseModel->getLeky($id_leky);
         
         // Pro zjednodušenou verzi je organizace vždy 'MUS'
-        $lek->ORGANIZACE = 'MUS'; 
+        $lek['ORGANIZACE'] = 'MUS'; 
         
         $lek['POJ'] = [];
         $values = '';
 
         $org = 'MUS';
         $lek[$org] = \Nette\Utils\ArrayHash::from($this->BaseModel->getPojistovny($id_leky, $org));
-        if (isset($lek->$org)) {
-            foreach ($lek->$org as $value => $key) {
+        if (isset($lek[$org])) {
+            foreach ($lek[$org] as $value => $key) {
                 if ($lek[$org][$value]['RL'] === '') {
                     $lek[$org][$value]['RL'] = '';
                 } elseif ($lek[$org][$value]['RL'] == 1 || $lek[$org][$value]['RL'] == 0) {
@@ -318,6 +320,7 @@ public function handleInlineEdit($id) {
     }
 
     public function renderNew() {
+        /** @var \Nette\Application\UI\Form $savedata */
         $savedata = $this->getComponent('zjednoduseneForm');
         
         // Pro zjednodušenou verzi je organizace vždy 'MUS'
@@ -365,41 +368,43 @@ public function zjednoduseneFormSucceeded($form) {
     $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
     
     foreach (['MUS'] as $org) {
-        foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojKey) {
-            if (isset($values->$org) && isset($values->$org[$pojKey]) && $values->$org[$pojKey]->STAV) {
-                $pojData = $values->$org[$pojKey];
-                
-                // Revizák
-                if (isset($pojData->Revizak) && $pojData->Revizak) {
-                    $pojData->RL = $pojData->RL ?? '0';
-                } else {
-                    $pojData->RL = '';
-                }
-                
-                // UKLÁDÁNÍ DG
-                if (isset($pojData->DG)) {
-                    foreach ($pojData->DG as $dg) {
-                        if (!empty($dg->DG_NAZEV)) {
-                            $dg->ID_LEKY = $values->ID_LEKY;
-                            $dg->ORGANIZACE = $org;
-                            $dg->POJISTOVNA = $pojKey;
-                            $this->BaseModel->insert_edit_pojistovny_dg($dg);
+        if (isset($values[$org])) { // Přidána kontrola existence $values[$org]
+            foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojKey) {
+                if (isset($values[$org][$pojKey]) && isset($values[$org][$pojKey]['STAV'])) {
+                    $pojData = $values[$org][$pojKey];
+                    
+                    // Revizák
+                    if (isset($pojData['Revizak']) && $pojData['Revizak']) {
+                        $pojData['RL'] = $pojData['RL'] ?? '0';
+                    } else {
+                        $pojData['RL'] = '';
+                    }
+                    
+                    // UKLÁDÁNÍ DG
+                    if (isset($pojData['DG'])) {
+                        foreach ($pojData['DG'] as $dg) {
+                            if (!empty($dg->DG_NAZEV)) {
+                                $dg->ID_LEKY = $values->ID_LEKY;
+                                $dg->ORGANIZACE = $org;
+                                $dg->POJISTOVNA = $pojKey;
+                                $this->BaseModel->insert_edit_pojistovny_dg($dg);
+                            }
                         }
                     }
+                    
+                    // UKLÁDÁNÍ POJIŠŤOVNY
+                    $pojData['ORGANIZACE'] = $org;
+                    $pojData['ID_LEKY'] = $values->ID_LEKY;
+                    $pojData['POJISTOVNA'] = $pojKey;
+                    $pojData['SMLOUVA'] = 0; // Výchozí hodnota
+                    $this->BaseModel->insert_edit_pojistovny($pojData);
                 }
-                
-                // UKLÁDÁNÍ POJIŠŤOVNY
-                $pojData->ORGANIZACE = $org;
-                $pojData->ID_LEKY = $values->ID_LEKY;
-                $pojData->POJISTOVNA = $pojKey;
-                $pojData->SMLOUVA = 0; // Výchozí hodnota
-                $this->BaseModel->insert_edit_pojistovny($pojData);
             }
         }
     }
     
     // Pro zjednodušenou verzi je organizace vždy 'MUS'
-    $values->ORGANIZACE = 'MUS';
+    $values['ORGANIZACE'] = 'MUS';
     $this->BaseModel->insertLeky($values);
     
     if ($editMode) {

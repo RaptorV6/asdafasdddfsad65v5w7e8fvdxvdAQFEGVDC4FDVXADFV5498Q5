@@ -110,9 +110,17 @@ class ZjednoduseneGridFactory extends \App\Factory\BaseDataGridFactory {
     }
 
 public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter = null) {
+    error_log("=== SET DG GRID START ===");
+    
     $grid->setPrimaryKey("ID");
     $grid->setTranslator($this->getCsTranslator());
     $grid->setColumnsHideable();
+    $grid->setStrictSessionFilterValues(false);
+
+    // ✅ JEDNODUCHÝ onRender bez hackování
+    $grid->onRender[] = function() {
+        error_log("=== DG GRID ON RENDER ===");
+    };
 
     $grid->addColumnText('ID', '#')
          ->setSortable()
@@ -172,14 +180,15 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter
          ->setFilterDate()
          ->setAttribute("data-date-language", "cs");
 
-       $grid->addInlineAdd()
+    // ✅ INLINE ADD - ale s custom validací
+    $grid->addInlineAdd()
         ->setPositionTop()
         ->onControlAdd[] = function (Container $container) use($ID_LEKY){
-            $container->addText("DG_NAZEV", "Název DG")
-                      ->setHtmlAttribute('data-autocomplete-dg')
-                      ->setRequired('Název DG je povinný')
-                      ->setNullable();
+            error_log("=== INLINE ADD CONTROL ADD ===");
             
+            $container->addText("DG_NAZEV", "Název DG")
+                      ->setHtmlAttribute('data-autocomplete-dg');
+
             $container->addSelect('111_RL', '111 - Revizní lékař')
                       ->setItems([
                           '' => 'Ne',
@@ -188,32 +197,33 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter
                       ])
                       ->setDefaultValue('');
 
-            $container->addText('111_POZNAMKA', '111 - Poznámka')
-                      ->setNullable();
-        
+            $container->addText('111_POZNAMKA', '111 - Poznámka');
+
             $container->addCheckbox('VILP', 'VILP')
                       ->setHtmlAttribute('class', 'checkbox_style')
                       ->setDefaultValue(false);
 
             $container->addText('DG_PLATNOST_OD','Platnost od')
                       ->setHtmlType('date')
-                      ->setDefaultValue(date("Y-m-d"))
-                      ->setNullable();
+                      ->setDefaultValue(date("Y-m-d"));
 
             $container->addText('DG_PLATNOST_DO','Platnost do')
                       ->setHtmlType('date')
-                      ->setDefaultValue(date("Y-m-d", strtotime('+1 year')))
-                      ->setNullable();
+                      ->setDefaultValue(date("Y-m-d", strtotime('+1 year')));
+                      
+            error_log("=== INLINE ADD CONTROLS CREATED ===");
         };
     
+    // ✅ INLINE EDIT - ale s custom validací
     $grid->addInlineEdit()
         ->onControlAdd[] = function(Container $container): void {
+            error_log("=== INLINE EDIT CONTROL ADD ===");
+            
             $container->addText("LEK_NAZEV", "Lék")
                       ->setHtmlAttribute('readonly');
                 
-            $container->addText("DG_NAZEV", "DG Název")
-                      ->setNullable();
-        
+            $container->addText("DG_NAZEV", "DG Název");
+
             $container->addSelect('111_RL', '111 - Revizní lékař')
                       ->setItems([
                           '' => 'Ne',
@@ -221,24 +231,22 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter
                           '1' => 'epikríza/info pro RL'
                       ]);
 
-            $container->addText('111_POZNAMKA', '111 - Poznámka')
-                      ->setNullable();
+            $container->addText('111_POZNAMKA', '111 - Poznámka');
 
             $container->addCheckbox('VILP', 'VILP')
                       ->setHtmlAttribute('class', 'checkbox_style');
 
             $container->addText('DG_PLATNOST_OD','Platnost od')
-                      ->setHtmlType('date')
-                      ->setNullable();
+                      ->setHtmlType('date');
 
             $container->addText('DG_PLATNOST_DO','Platnost do')
-                      ->setHtmlType('date')
-                      ->setNullable();
+                      ->setHtmlType('date');
                       
-            // Hidden fieldy pro identifikaci
             $container->addHidden('ID_LEKY');
             $container->addHidden('ORGANIZACE');
             $container->addHidden('POJISTOVNA');
+            
+            error_log("=== INLINE EDIT CONTROLS CREATED ===");
         };
 
     $grid->getInlineEdit()->onSetDefaults[] = function (Container $container, $item): void {
@@ -253,13 +261,13 @@ public function setDGGrid(\Ublaboo\DataGrid\DataGrid $grid, $ID_LEKY, $presenter
             'VILP' => $item['VILP'],
             'DG_PLATNOST_OD' => $PLATNOST_OD,
             'DG_PLATNOST_DO' => $PLATNOST_DO,
-            // Hidden
             'ID_LEKY' => $item['ID_LEKY'],
             'ORGANIZACE' => $item['ORGANIZACE'],
             'POJISTOVNA' => $item['POJISTOVNA'],
         ]);
     };
 
+    error_log("=== SET DG GRID END ===");
     return $grid;
 }
 
