@@ -72,12 +72,12 @@ public function setZjednoduseneForm(\Nette\Application\UI\Form $form) {
          ->toggle('p213_pojistovna')
          ->endCondition();
 
-    foreach (['MUS'] as $organizace) {
-        $contOrg = $form->addContainer($organizace);
-        foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojistovna) {
-            $this->setPojistovnaContainer($contOrg->addContainer($pojistovna), $organizace, $pojistovna);
-        }
+ foreach (['NH', 'RNB', 'MUS', 'DCNH'] as $organizace) {
+    $contOrg = $form->addContainer($organizace);
+    foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojistovna) {
+        $this->setPojistovnaContainer($contOrg->addContainer($pojistovna), $organizace, $pojistovna);
     }
+}
 }
 
     private function setPojistovnaContainer(Container $container, $org, $poj) {
