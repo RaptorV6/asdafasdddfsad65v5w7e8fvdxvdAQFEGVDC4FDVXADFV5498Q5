@@ -27,11 +27,30 @@ class LekyZjednoduseny extends \App\Model\AModel {
 }
 
 public function getDataSourceGrouped($organizace = null, $history = null) {
-    $select = $this->db->query('
+    
+    // ✅ DEBUG
+    \Tracy\Debugger::barDump($organizace, 'SQL Organizace parametr');
+    
+    $whereConditions = ['AKORD = 0'];
+    $params = [self::LEKY_VIEW];
+    
+    if ($organizace) {
+        if (is_array($organizace)) {
+            $whereConditions[] = 'ORGANIZACE IN %in';
+            $params[] = $organizace;
+        } else {
+            $whereConditions[] = 'ORGANIZACE = %s';
+            $params[] = $organizace;
+        }
+    }
+    
+    $whereClause = implode(' AND ', $whereConditions);
+    
+    $select = $this->db->query("
         SELECT TOP 100 PERCENT
             CASE
                 WHEN COUNT(*) > 1
-                THEN NAZ + \' (\' + CAST(COUNT(*) AS VARCHAR) + \'x)\'
+                THEN NAZ + ' (' + CAST(COUNT(*) AS VARCHAR) + 'x)'
                 ELSE NAZ
             END as NAZ,
             ORGANIZACE,
@@ -64,10 +83,10 @@ public function getDataSourceGrouped($organizace = null, $history = null) {
             MAX(poj213_BARVA) as poj213_BARVA
             
         FROM %n 
-        WHERE AKORD = 0 %if', self::LEKY_VIEW, $organizace, 'AND ORGANIZACE = %s %end', $organizace, '
+        WHERE $whereClause
         GROUP BY NAZ, ORGANIZACE
-        ORDER BY MIN(ID_LEKY) COLLATE Czech_CI_AS DESC  -- ✅ Nejnovější nahoře
-    ');
+        ORDER BY MIN(ID_LEKY) COLLATE Czech_CI_AS DESC
+    ", ...$params);
     
     return $select->fetchAll();
 }

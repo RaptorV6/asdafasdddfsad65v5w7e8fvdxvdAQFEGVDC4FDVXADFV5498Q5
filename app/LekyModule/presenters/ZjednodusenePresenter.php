@@ -351,6 +351,7 @@ public function zjednoduseneFormSucceeded($form) {
         $values->ID_LEKY = $values->ATC;
     }
     
+    // Nastavení výchozích hodnot
     $values->DOP = $values->DOP ?? '';
     $values->SILA = $values->SILA ?? '';
     $values->BALENI = $values->BALENI ?? '';
@@ -371,8 +372,9 @@ public function zjednoduseneFormSucceeded($form) {
     
     $this->LogyModel->insertLog(\App\LekyModule\Model\Leky::AKESO_LEKY, $values, $this->user->getId());
     
-    foreach (['MUS'] as $org) {
-        if (isset($values[$org])) { // Přidána kontrola existence $values[$org]
+    // ✅ OPRAVA - jen vybrané organizace
+    foreach ($values->ORGANIZACE as $org) {
+        if (isset($values[$org])) {
             foreach (['111', '201', '205', '207', '209', '211', '213'] as $pojKey) {
                 if (isset($values[$org][$pojKey]) && isset($values[$org][$pojKey]['STAV'])) {
                     $pojData = $values[$org][$pojKey];
@@ -400,16 +402,23 @@ public function zjednoduseneFormSucceeded($form) {
                     $pojData['ORGANIZACE'] = $org;
                     $pojData['ID_LEKY'] = $values->ID_LEKY;
                     $pojData['POJISTOVNA'] = $pojKey;
-                    $pojData['SMLOUVA'] = 0; // Výchozí hodnota
+                    $pojData['SMLOUVA'] = 0;
                     $this->BaseModel->insert_edit_pojistovny($pojData);
                 }
             }
         }
     }
     
-    // Pro zjednodušenou verzi je organizace vždy 'MUS'
-    $values['ORGANIZACE'] = 'MUS';
-    $this->BaseModel->insertLeky($values);
+    // ✅ OPRAVA - ukládej pro každou vybranou organizaci
+    if (is_array($values->ORGANIZACE)) {
+        foreach ($values->ORGANIZACE as $org) {
+            $tempValues = clone $values;
+            $tempValues->ORGANIZACE = $org;
+            $this->BaseModel->insertLeky($tempValues);
+        }
+    } else {
+        $this->BaseModel->insertLeky($values);
+    }
     
     if ($editMode) {
         $this->flashMessage('Lék byl upraven.', "success");
